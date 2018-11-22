@@ -1,5 +1,6 @@
-extends CanvasLayer
+extends Node
 
+export var site_address = "18sGzRGJaTkuywmEyfPEZp1YG1dbA46h6m"
 export var _zeronet_daemon_address = "127.0.0.1"
 export var _zeronet_daemon_port = 43110
 
@@ -154,8 +155,6 @@ func _ws_server_close_request(error, reason):
 
 # Herp derp!
 func _be_external_program():
-	var site_address = "18sGzRGJaTkuywmEyfPEZp1YG1dbA46h6m"
-	
 	# Open a connection to a ZeroNet site
 	yield(use_site(site_address), "site_connected")
 	

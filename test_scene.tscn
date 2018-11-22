@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://addons/ZeroNet/ZeroNet.gd" type="Script" id=1]
+[ext_resource path="res://addons/ZeroNet/icon.png" type="Texture" id=2]
+
+[node name="Root" type="Spatial"]
+
+[node name="ZeroNet" type="Node" parent="."]
+script = ExtResource( 1 )
+__meta__ = {
+"_editor_icon": ExtResource( 2 )
+}
+

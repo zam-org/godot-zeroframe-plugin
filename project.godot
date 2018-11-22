@@ -17,8 +17,8 @@ _global_script_class_icons={
 
 config/name="ZeroNet Testing"
 run/main_scene="res://Spatial.tscn"
-config/icon="res://icon.png"
+config/icon="res://addons/ZeroNet/icon.png"
 
-[rendering]
+[editor_plugins]
 
-environment/default_environment="res://default_env.tres"
+enabled=PoolStringArray( "ZeroNet" )
