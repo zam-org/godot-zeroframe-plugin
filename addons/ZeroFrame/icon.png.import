@@ -2,12 +2,12 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/icon.png-95ab0e95b859344f11c47795e605790d.stex"
+path="res://.import/icon.png-21b5aace3da5c976c9f92495bdd3055b.stex"
 
 [deps]
 
-source_file="res://addons/ZeroNet/icon.png"
-dest_files=[ "res://.import/icon.png-95ab0e95b859344f11c47795e605790d.stex" ]
+source_file="res://addons/ZeroFrame/icon.png"
+dest_files=[ "res://.import/icon.png-21b5aace3da5c976c9f92495bdd3055b.stex" ]
 
 [params]
 
