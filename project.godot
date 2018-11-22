@@ -16,9 +16,5 @@ _global_script_class_icons={
 [application]
 
 config/name="ZeroNet Testing"
-run/main_scene="res://test_scene.tscn"
-config/icon="res://addons/ZeroFrame/icon.png"
-
-[editor_plugins]
-
-enabled=PoolStringArray( "ZeroFrame", "ZeroNet" )
+run/main_scene="res://Spatial.tscn"
+config/icon="res://icon.png"

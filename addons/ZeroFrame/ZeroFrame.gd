@@ -1,6 +1,6 @@
 extends Node
 
-export var site_address = "18sGzRGJaTkuywmEyfPEZp1YG1dbA46h6m"
+export var site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
 export var _zeronet_daemon_address = "127.0.0.1"
 export var _zeronet_daemon_port = 43110
 
