@@ -1,12 +1,20 @@
 extends CanvasLayer
 
-var _zeronet_daemon_address = "127.0.0.1"
-var _zeronet_daemon_port = 43110
+export var _zeronet_daemon_address = "127.0.0.1"
+export var _zeronet_daemon_port = 43110
+
+# Emitted when a websocket connection to a ZeroNet site completed successfully
+signal site_connected
+
+# Emitted when a command completes successfully. Returns cmd ID and response data
+signal command_completed(response)
+
+# Emitted when a site notification is received
+signal notification_received(notification)
 
 var _ws_client = WebSocketClient.new()
-
-var _wrapper_key_regex = RegEx.new()
 var _wrapper_key = ""
+var _wrapper_key_regex = RegEx.new()
 
 # Called when the node enters the scene tree for the first time.
 func _init():
@@ -17,14 +25,32 @@ func _init():
 	_ws_client.connect("connection_established", self, "_ws_connection_established")
 	_ws_client.connect("connection_succeeded", self, "_ws_connection_established")
 	_ws_client.connect("connection_error", self, "_ws_connection_error")
+	_ws_client.connect("data_received", self, "_ws_data_received")
+	_ws_client.connect("server_close_request", self, "_ws_server_close_request")
 	
 	_be_external_program()
+	
+func _process(delta):
+	if _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
+		_ws_client.poll()
+		if _ws_client.get_peer(1).get_available_packet_count() > 0:
+			var response = JSON.parse(_ws_client.get_peer(1).get_packet().get_string_from_utf8()).result
+			if typeof(response) != TYPE_DICTIONARY:
+				return
+			
+			# Check if this is a response to a command or a site notification
+			if response["cmd"] == "notification":
+				emit_signal("notification_received", response)
+			elif response["cmd"] == "response":
+				emit_signal("command_completed", response["result"])
+			else:
+				print("Unknown websocket data received:", response)
 
-func _make_request(host, port, path):
+func _make_http_request(host, port, path):
 	var err = 0
 	var http = HTTPClient.new() # Create the Client
 	
-	err = http.connect_to_host(host, _zeronet_daemon_port) # Connect to host/port
+	err = http.connect_to_host(host, port) # Connect to host/port
 	assert(err == OK) # Make sure connection was OK
 	
 	# Wait until resolved and connected
@@ -73,12 +99,12 @@ func _make_request(host, port, path):
 # Retrieve the wrapper_key of a ZeroNet website
 func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
-	var text = _make_request(_zeronet_daemon_address, _zeronet_daemon_port, "/" + site_address)
+	var text = _make_http_request(_zeronet_daemon_address, _zeronet_daemon_port, "/" + site_address)
 	
     # Parse text and grab wrapper key
 	var matches = _wrapper_key_regex.search(text)
 	
-	# Check we got a match on the wrapper_key
+	# Check that we got a match on the wrapper_key
 	if matches.get_group_count() == 0:
 		return ""
 		
@@ -86,11 +112,13 @@ func get_wrapper_key(site_address):
 	return matches.get_string(1)
 	
 # Send a command to the ZeroNet daemon
-func cmd(command, parameters):
+func cmd(command, parameters) -> Object:
 	# Send command with arguments to ZeroNet daemon over websocket
 	var contents = JSON.print({"cmd": command, "params": parameters, "id": 1000001})
-	print(contents)
-	#_ws_client.put_packet(contents)
+	print("Sending command:", contents)
+	_ws_client.get_peer(1).put_packet(contents.to_utf8())
+	
+	return self
 	
 # Set custom zeronet daemon host address and port
 func set_daemon_address(host, port):
@@ -98,7 +126,7 @@ func set_daemon_address(host, port):
 	_zeronet_daemon_port = port
 	
 # Use this site for future commands
-func use_site(site_address):
+func use_site(site_address) -> Object:
 	# Get wrapper key of the site
 	_wrapper_key = get_wrapper_key(site_address)
 	
@@ -107,16 +135,41 @@ func use_site(site_address):
 		+ str(_zeronet_daemon_port) \
 		+ "/Websocket?wrapper_key=%s" % _wrapper_key
 		
-	print(ws_url)
 	_ws_client.connect_to_url(ws_url)
+	
+	return self
 	
 func _ws_connection_established(protocol):
 	print("Connection established with protocol %s!" % protocol)
+	# Set sending websocket data as text, which ZeroNet prefers, rather than binary
+	_ws_client.get_peer(1).set_write_mode(WebSocketPeer.WRITE_MODE_TEXT)
+	
+	emit_signal("site_connected")
 	
 func _ws_connection_error():
-	print("Websocket connection failed")
+	print("Websocket connection failed!")
+	
+func _ws_server_close_request(error, reason):
+	print("Server issued close request!", error, reason)
 
 # Herp derp!
 func _be_external_program():
-	use_site('1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D')
-	var site_info = cmd('siteInfo', {}) #Signal?
+	var site_address = "18sGzRGJaTkuywmEyfPEZp1YG1dbA46h6m"
+	
+	# Open a connection to a ZeroNet site
+	yield(use_site(site_address), "site_connected")
+	
+	# Send siteInfo command to retrieve information about the site
+	var response = yield(cmd("siteInfo", {}), "command_completed")
+	print("Site information: ", response)
+	
+	# Store some data on the site
+	var data = Marshalls.utf8_to_base64(JSON.print({"score": 500}))
+	response = yield(cmd("fileWrite", {"inner_path": "data/user/data.json", "content_base64": data}), "command_completed")
+	print("Store response: ", response)
+	
+	# TODO: Publish the data (Needs cert)
+	
+	# Retrieve that data
+	response = yield(cmd("fileGet", {"inner_path": "data/user/data.json"}), "command_completed")
+	print(JSON.parse(response).result)
