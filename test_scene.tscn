@@ -10,4 +10,7 @@ script = ExtResource( 1 )
 __meta__ = {
 "_editor_icon": ExtResource( 2 )
 }
+site_address = null
+_zeronet_daemon_address = null
+_zeronet_daemon_port = null
 

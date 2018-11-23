@@ -1,8 +1,8 @@
 extends Node
 
 export var site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
-export var _zeronet_daemon_address = "127.0.0.1"
-export var _zeronet_daemon_port = 43110
+export var _daemon_address = "127.0.0.1"
+export var _daemon_port = 43110
 
 # Emitted when a websocket connection to a ZeroNet site completed successfully
 signal site_connected
@@ -100,7 +100,7 @@ func _make_http_request(host, port, path):
 # Retrieve the wrapper_key of a ZeroNet website
 func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
-	var text = _make_http_request(_zeronet_daemon_address, _zeronet_daemon_port, "/" + site_address)
+	var text = _make_http_request(_daemon_address, _daemon_port, "/" + site_address)
 	
     # Parse text and grab wrapper key
 	var matches = _wrapper_key_regex.search(text)
@@ -123,8 +123,8 @@ func cmd(command, parameters) -> Object:
 	
 # Set custom zeronet daemon host address and port
 func set_daemon_address(host, port):
-	_zeronet_daemon_address = host
-	_zeronet_daemon_port = port
+	_daemon_address = host
+	_daemon_port = port
 	
 # Use this site for future commands
 func use_site(site_address) -> Object:
