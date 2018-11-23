@@ -132,8 +132,8 @@ func use_site(site_address) -> Object:
 	_wrapper_key = get_wrapper_key(site_address)
 	
 	# Open up WebSocket connection to the daemon
-	var ws_url = "ws://" + _zeronet_daemon_address + ":" \
-		+ str(_zeronet_daemon_port) \
+	var ws_url = "ws://" + _daemon_address + ":" \
+		+ str(_daemon_port) \
 		+ "/Websocket?wrapper_key=%s" % _wrapper_key
 		
 	_ws_client.connect_to_url(ws_url)
@@ -172,3 +172,18 @@ func _be_external_program():
 	# Retrieve that data
 	response = yield(cmd("fileGet", {"inner_path": "data/user/data.json"}), "command_completed")
 	print(JSON.parse(response).result)
+
+func _on_site_address_edit_text_changed(new_text):
+	pass # Replace with function body.
+
+
+func _on_zeronet_address_edit_text_changed(new_text):
+	pass # Replace with function body.
+
+
+func _on_zeronet_port_edit_text_changed(new_text):
+	pass # Replace with function body.
+
+
+func _on_check_button_pressed():
+	pass # Replace with function body.
