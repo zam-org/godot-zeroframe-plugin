@@ -19,6 +19,8 @@ config/name="ZeroNet Testing"
 run/main_scene="res://test_scene.tscn"
 config/icon="res://icon.png"
 
-[editor_plugins]
+[network]
 
-enabled=PoolStringArray( "ZeroFrame" )
+limits/websocket_client/max_in_buffer_kb=4096
+limits/websocket_client/max_out_buffer_kb=4096
+ssl/certificates="res://ca-certificates.crt"
