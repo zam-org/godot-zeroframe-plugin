@@ -1,8 +1,8 @@
 extends Node
 
-export var _site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
-export var _daemon_address = "127.0.0.1"
-export var _daemon_port = 43110
+var _site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
+var _daemon_address = "127.0.0.1"
+var _daemon_port = 43110
 
 var ca_addresses = {
 	"zeroid": "zeroid.bit"
@@ -24,6 +24,9 @@ var _wrapper_key_regex = RegEx.new()
 
 # Called when the node enters the scene tree for the first time.
 func _init():
+	_site_address = zf_settings._site_address
+	_daemon_address = zf_settings._daemon_address
+	_daemon_port = zf_settings._daemon_port
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 	
@@ -383,17 +386,4 @@ func _be_external_program():
 	# Retrieve that data
 	response = yield(cmd("fileGet", {"inner_path": "data/user/data.json"}), "command_completed")
 	print(JSON.parse(response).result)
-
-func _on_site_address_edit_text_changed(address):
-	_site_address = address
-
-func _on_zeronet_address_edit_text_changed(address):
-	_daemon_address = address
-
-func _on_zeronet_port_edit_text_changed(port):
-	_daemon_port = port
-
-func _on_check_button_pressed():
-	# Connect to site
-	# TODO: Timeout and complain if timeout reached
-	yield(use_site(_site_address), "site_connected")
+	
