@@ -185,9 +185,9 @@ func register_zeroid(username):
 
 	# Get challenge
 	var response_json = _make_http_request("zeroid.qc.to",
-										   443,
+										   80,
 										   "/ZeroID/request.php",
-										   JSON.print(registration_data),
+										   registration_data,
 										   HTTPClient.METHOD_POST)
 										
 	var response = JSON.parse(response_json)
@@ -204,13 +204,13 @@ func register_zeroid(username):
 	registration_data["work_id"] = response["work_id"]
 	registration_data["work_solution"] = _solve_zeroid_challenge(response["work_task"])
 	print("Registering (2/2) with: ", JSON.print(registration_data))
-	
+	#return "faking end"
 	# Send challenge solution
 	response = _make_http_request("zeroid.qc.to",
-									443,
-									"/ZeroID/solution.php",
-									JSON.print(registration_data),
-									HTTPClient.METHOD_POST)
+								  80,
+								  "/ZeroID/solution.php",
+								  registration_data,
+								  HTTPClient.METHOD_POST)
 	
 	# Ensure registration was successful
 	if response != "OK":
@@ -253,15 +253,18 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 	# Wait until resolved and connected
 	while http.get_status() == HTTPClient.STATUS_CONNECTING or http.get_status() == HTTPClient.STATUS_RESOLVING:
 		http.poll()
-		OS.delay_msec(500)
+		OS.delay_msec(300)
 	
 	assert(http.get_status() == HTTPClient.STATUS_CONNECTED) # Could not connect
 	
-	# Some headers
-	var headers = [
-		"User-Agent: Pirulo/1.0 (Godot)",
-		"Accept: text/html"
-	]
+	# Different headers for POST vs. GET
+	var headers = ["User-Agent: Pirulo/1.0 (Godot)"]
+	if method_type == HTTPClient.METHOD_GET:
+		headers.append("Accept: text/html")
+	elif method_type == HTTPClient.METHOD_POST:
+		headers.append("Accept: */*")
+		headers.append("Content-Type: application/x-www-form-urlencoded; charset=UTF-8")
+		payload = http.query_string_from_dict(payload)
 	
 	# Request a page from the site (this one was chunked..)
 	err = http.request(method_type, path, headers, payload) 
@@ -359,7 +362,7 @@ func _ws_server_close_request(error, reason):
 # Herp derp!
 func _be_external_program():
 	var site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
-	var username = "habanarabala"
+	var username = "tespusper4"
 	var error = yield(register_zeroid(username), "completed")
 	if error:
 		print("Unable to successfully register: ", error)
