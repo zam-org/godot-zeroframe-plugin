@@ -4,6 +4,8 @@ var _site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
 var _daemon_address = "127.0.0.1"
 var _daemon_port = 43110
 
+var config_file = "res://addons/ZeroFrame/config.cfg"
+
 var ca_addresses = {
 	"zeroid": "zeroid.bit"
 }
@@ -24,9 +26,12 @@ var _wrapper_key_regex = RegEx.new()
 
 # Called when the node enters the scene tree for the first time.
 func _init():
-	_site_address = zf_settings._site_address
-	_daemon_address = zf_settings._daemon_address
-	_daemon_port = zf_settings._daemon_port
+	# here we get values from the config.cfg file
+	# the third value is the default, in case the config file does not exist
+	_site_address = load_setting("zeroframe", "site_address", "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D")
+	_daemon_address = load_setting("zeroframe", "zeronet_address", "127.0.0.1")
+	_daemon_port = int(load_setting("zeroframe", "zeronet_port", 43110))
+	
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 	
@@ -387,3 +392,10 @@ func _be_external_program():
 	response = yield(cmd("fileGet", {"inner_path": "data/user/data.json"}), "command_completed")
 	print(JSON.parse(response).result)
 	
+	
+func load_setting(section, key, default):
+	var file = ConfigFile.new()
+	var err = file.load(config_file)
+		
+	var result = file.get_value(section, key, default)
+	return result
