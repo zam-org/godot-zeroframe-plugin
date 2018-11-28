@@ -19,9 +19,10 @@ config/name="ZeroNet Testing"
 run/main_scene="res://test_scene.tscn"
 config/icon="res://icon.png"
 
-[autoload]
+[display]
 
-zf_settings="*res://addons/ZeroFrame/ZeroFrame_settings.gd"
+window/size/width=600
+window/size/height=1200
 
 [editor_plugins]
 
