@@ -5,11 +5,11 @@
 
 [sub_resource type="StyleBoxFlat" id=1]
 
-bg_color = Color( 0.113517, 0.074585, 0.183594, 1 )
+bg_color = Color( 0.0588235, 0.0588235, 0.0588235, 1 )
 
 [sub_resource type="StyleBoxFlat" id=2]
 
-bg_color = Color( 0, 0, 0, 1 )
+bg_color = Color( 0.0588235, 0.0588235, 0.0588235, 1 )
 
 [sub_resource type="StyleBoxFlat" id=3]
 
@@ -196,7 +196,7 @@ grow_horizontal = 2
 grow_vertical = 2
 rect_min_size = Vector2( 0, 105 )
 custom_colors/font_color = Color( 1, 1, 1, 0.278431 )
-text = "You may be wondering what the Buffer Kb doesand I am here to tell you, it's awesome, it's sweet and it helps you. Just like kinder surprise but very differently."
+text = "Godot's default Websocket Buffer is very small (16Kb). This represents the max file size you can store/receive in ZeroNet. You are advised to raise this limit to suit your needs. At least 5MB (5120 Kb) recommended."
 valign = 1
 autowrap = true
 

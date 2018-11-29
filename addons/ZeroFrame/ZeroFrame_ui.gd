@@ -78,8 +78,8 @@ func reset_to_defaults():
 	save_setting("zeroframe", "site_address", "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D")
 	save_setting("zeroframe", "zeronet_address", "127.0.0.1")
 	save_setting("zeroframe", "zeronet_port", 43110)
-	save_setting("zeroframe", "max_in_buffer_kb", 64)
-	save_setting("zeroframe", "max_out_buffer_kb", 64)
+	save_setting("zeroframe", "max_in_buffer_kb", 16)
+	save_setting("zeroframe", "max_out_buffer_kb", 16)
 	refresh_values()
 
 func _on_defaults_button_pressed():
