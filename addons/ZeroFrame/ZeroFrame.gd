@@ -12,13 +12,13 @@ var ca_addresses = {
 signal site_connected
 
 # Emitted when a command completes successfully. Returns cmd ID and response data
-signal command_completed(response)
+signal command_completed(response, type)
 # Emitted when a site notification is received
 signal notification_received(notification)
 # Emitted when the site files have been externally updated
 signal site_updated(message)
 
-var _ws_client = WebSocketClient.new()
+var _ws_client 
 var _wrapper_key = ""
 var _wrapper_key_regex = RegEx.new()
 
@@ -27,14 +27,12 @@ func _init():
 	_site_address = zf_settings._site_address
 	_daemon_address = zf_settings._daemon_address
 	_daemon_port = zf_settings._daemon_port
+	
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 	
-	# Websocket client Signals
-	_ws_client.connect("connection_established", self, "_ws_connection_established")
-	_ws_client.connect("connection_succeeded", self, "_ws_connection_established")
-	_ws_client.connect("connection_error", self, "_ws_connection_error")
-	_ws_client.connect("server_close_request", self, "_ws_server_close_request")
+	# Create WebSocket client
+	_ws_client = new_ws_client()
 	
 	_be_external_program()
 	
@@ -47,15 +45,30 @@ func _process(delta):
 				return
 			
 			# Check if this is a response to a command or a site notification
-			if response["cmd"] == "notification":
-				emit_signal("notification_received", response)
-			elif response["cmd"] == "response":
-				emit_signal("command_completed", response["result"])
-			elif response["cmd"] == "setSiteInfo":
-				emit_signal("site_updated", response)
-			else:
-				print("Unknown websocket data received:", response)
+			var type = response["cmd"]
+			match type:
+				"notification":
+					emit_signal("notification_received", response)
+				"response":
+					emit_signal("command_completed", {"result": response["result"], "type": type})
+				"confirm":
+					emit_signal("command_completed", {"result": response["params"], "type": type})
+				"setSiteInfo":
+					emit_signal("site_updated", response)
+				_:
+					print("Unknown websocket data received:", response)
 				
+func new_ws_client():
+	_ws_client = WebSocketClient.new()
+	
+	# Websocket client signals
+	_ws_client.connect("connection_established", self, "_ws_connection_established")
+	_ws_client.connect("connection_succeeded", self, "_ws_connection_established")
+	_ws_client.connect("connection_error", self, "_ws_connection_error")
+	_ws_client.connect("server_close_request", self, "_ws_server_close_request")
+	
+	return _ws_client
+	
 # Searches through dictionary of users for an auth address
 # Helper function for _get_zeroid_cert
 func _search_zeroid_users(users, auth_address):
@@ -71,12 +84,12 @@ func _search_zeroid_users(users, auth_address):
 			# Quick way to narrow down user match
 			if auth_address.begins_with(auth_address_pre):
 				var cert_filename = "certs_%s.json" % cert_file_id
-				var cert_file_json = yield(
+				var response = yield(
 					cmd("fileGet", {"inner_path": cert_filename}),
 					"command_completed"
 				)
 				
-				cert = JSON.parse(cert_file_json)["certs"][username]
+				cert = JSON.parse(response.result)["certs"][username]
 				info = cert.split(",")
 				var found_auth_address = info[1]
 				
@@ -96,18 +109,20 @@ func _search_zeroid_users(users, auth_address):
 # Retrieve the cert information of a ZeroID user given their auth_address
 func _get_zeroid_cert(auth_address):
 	# Get set of archived ZeroID users
-	var users_json = yield(
+	var response = yield(
 		cmd("fileGet", {"inner_path": "data/users_archive.json"}),
 		"command_completed"
 	)
+	var users_json = response.result
 	
 	var users = JSON.parse(users_json).result["users"]
 	
 	# Get set of latest ZeroID users
-	users_json = yield(
+	response = yield(
 		cmd("fileGet", {"inner_path": "data/users.json"}),
 		"command_completed"
 	)
+	users_json = response.result
 	
 	var new_users = JSON.parse(users_json).result["users"]
 	
@@ -141,7 +156,8 @@ func _solve_zeroid_challenge(challenge):
 # daemon using the `certAdd` command.
 #
 # Be aware that this will disrupt any existing site websocket
-# connection, which will need to be reestablished if necessary
+# connection, which will need to be re-established if necessary
+# TODO: Ability to connect to multiple zites at once?
 func register_zeroid(username):
 	print("Registering user...")
 	# Set ZeroID as the site to use
@@ -150,13 +166,12 @@ func register_zeroid(username):
 	print("Connected to ZeroID")
 	
 	# Retrieve information from siteInfo
-	var site_info = yield(cmd("siteInfo", {}), "command_completed")
+	var response = yield(cmd("siteInfo", {}), "command_completed")
+	var site_info = response.result
 	
 	# Retrieve current public key/auth address
 	var auth_address = site_info["auth_address"]
 	print("Got auth address:", auth_address)
-	
-	# TODO: Check if a zeroid cert is already in our client
 	
 	# Check if this auth_address has already been registered
 	var cert = yield(_get_zeroid_cert(auth_address), "completed")
@@ -167,14 +182,25 @@ func register_zeroid(username):
 		var cert_sign = info[2]
 		
 		# Add cert to the client
-		var response = yield(cmd("certAdd", {
+		response = yield(cmd("certAdd", {
 			"domain": ca_addresses["zeroid"],
 			"auth_type": auth_type,
 			"auth_user_name": username,
 			"cert": cert_sign,
 		}), "command_completed")
 		
-		return response == "OK"
+		# Why does this just return and hang???
+		print("This user already exists:", response)
+		
+		if response.type == "confirm":
+			# We already have a cert for this registrar
+			# TODO: Replace existing cert
+			return null
+		else:
+			if response.result == "OK":
+				return null
+			else:
+				return response.result
 	
 	# Set up registration data to send to challenge server
 	var registration_data = {
@@ -190,7 +216,7 @@ func register_zeroid(username):
 										   registration_data,
 										   HTTPClient.METHOD_POST)
 										
-	var response = JSON.parse(response_json)
+	response = JSON.parse(response_json)
 	if response.error != OK:
 		# Received an error instead of data
 		# Give up and return error
@@ -218,7 +244,9 @@ func register_zeroid(username):
 		return response
 		
 	# Wait for notification of site update
+	print("Waiting for site updated")
 	print("Site updated: ", yield(self, "site_updated"))
+	print("Updated!")
 	
 	# Retrieve cert information from ZeroID site files
 	cert = _get_zeroid_cert(auth_address)
@@ -236,10 +264,16 @@ func register_zeroid(username):
 	}), "command_completed")
 
 	# Registration completed and new cert added to client
-	if response == "OK":
-		return null
-	else:
-		return response
+	match response.type:
+		"confirm":
+			# We already have a cert for this registrar
+			# TODO: Replace existing cert
+			return null
+		"response":
+			if response == "OK":
+				return null
+			else:
+				return response
 
 # Make a http/s request to a host. 
 # payload is a string that will be sent in the request
@@ -296,6 +330,16 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 				rb = rb + chunk # Append to read buffer
 		
 		return rb.get_string_from_ascii()
+		
+# Get available certs that the current site supports
+func get_available_certs():
+	# TODO: Get certs through selectCert. HTML processing for now
+	pass
+	
+# Select a cert given by get_available_certs
+func select_cert(id):
+	# TODO: Send a response from _ws_client with the chosen cert
+	pass
 	
 # Retrieve the wrapper_key of a ZeroNet website
 func get_wrapper_key(site_address):
@@ -306,7 +350,7 @@ func get_wrapper_key(site_address):
 	var matches = _wrapper_key_regex.search(text)
 	
 	# Check that we got a match on the wrapper_key
-	if matches.get_group_count() == 0:
+	if matches == null or matches.get_group_count() == 0:
 		return ""
 		
 	# Return the wrapper_key
@@ -331,11 +375,17 @@ func use_site(site_address):
 	# Remove any previous websocket connection
 	_ws_client.disconnect_from_host()
 	
+	_ws_client = new_ws_client()
+	
 	# Keep track of new address
 	_site_address = site_address
 	
 	# Get wrapper key of the site
 	_wrapper_key = get_wrapper_key(site_address)
+	
+	if _wrapper_key == "":
+		print("Unable to connect to ZeroNet")
+		return null
 	
 	# Open up WebSocket connection to the daemon
 	var ws_url = "ws://" + _daemon_address + ":" \
@@ -361,29 +411,35 @@ func _ws_server_close_request(error, reason):
 
 # Herp derp!
 func _be_external_program():
-	var site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
-	var username = "tespusper4"
+	var site_address = "1vcpDyMSZWDMmsD81Z6zApFStPvr2j728"
+	var username = "tespusper7"
 	var error = yield(register_zeroid(username), "completed")
-	if error:
+	if error == null:
+		print("Successful!")
+	else:
 		print("Unable to successfully register: ", error)
 		return
 	
 	# Open a connection to a ZeroNet site
 	yield(use_site(site_address), "site_connected")
+	
+	# Get available users
+	#var users = get_users()
 		
 	# Send siteInfo command to retrieve information about the site
-	var response = yield(cmd("siteInfo", {}), "command_completed")
-	print("Site information: ", response)
+	var site_info = yield(cmd("siteInfo", {}), "command_completed").result
 	
 	# Store some data on the site
+	var inner_path = "data/%s/data.json" % site_info["auth_address"]
 	var data = Marshalls.utf8_to_base64(JSON.print({"score": 500}))
-	response = yield(cmd("fileWrite", {"inner_path": "data/user/data.json", "content_base64": data}), "command_completed")
+	var response = yield(cmd("fileWrite", {"inner_path": inner_path, "content_base64": data}), "command_completed")
 	print("Store response: ", response)
 	
 	# Publish the data to peers
 	response = yield(cmd("sitePublish", {"sign": true}), "command_completed")
 	
 	# Retrieve that data
-	response = yield(cmd("fileGet", {"inner_path": "data/user/data.json"}), "command_completed")
-	print(JSON.parse(response).result)
+	response = yield(cmd("fileGet", {"inner_path": inner_path}), "command_completed")
+	var user_data = JSON.parse(response.result)
+	print(user_data.result)
 	

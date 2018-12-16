@@ -21,15 +21,15 @@ corner_radius_top_right = 1
 corner_radius_bottom_right = 1
 corner_radius_bottom_left = 1
 
-[sub_resource type="StyleBoxFlat" id=6]
+[sub_resource type="StyleBoxFlat" id=3]
 
 bg_color = Color( 0.113517, 0.074585, 0.183594, 1 )
 
-[sub_resource type="StyleBoxFlat" id=7]
+[sub_resource type="StyleBoxFlat" id=4]
 
 bg_color = Color( 0, 0, 0, 1 )
 
-[sub_resource type="Theme" id=8]
+[sub_resource type="Theme" id=5]
 
 
 [node name="ZeroFrame" type="Control"]
@@ -165,8 +165,8 @@ margin_top = 194.0
 margin_right = 1001.0
 margin_bottom = 224.0
 rect_min_size = Vector2( 0, 30 )
-custom_styles/focus = SubResource( 6 )
-custom_styles/normal = SubResource( 7 )
+custom_styles/focus = SubResource( 3 )
+custom_styles/normal = SubResource( 4 )
 text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
 align = 1
 placeholder_text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
@@ -188,8 +188,8 @@ margin_top = 270.0
 margin_right = 1001.0
 margin_bottom = 300.0
 rect_min_size = Vector2( 0, 30 )
-custom_styles/focus = SubResource( 6 )
-custom_styles/normal = SubResource( 7 )
+custom_styles/focus = SubResource( 3 )
+custom_styles/normal = SubResource( 4 )
 text = "127.0.0.1"
 align = 1
 placeholder_text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
@@ -211,8 +211,8 @@ margin_top = 346.0
 margin_right = 1001.0
 margin_bottom = 376.0
 rect_min_size = Vector2( 0, 30 )
-custom_styles/focus = SubResource( 6 )
-custom_styles/normal = SubResource( 7 )
+custom_styles/focus = SubResource( 3 )
+custom_styles/normal = SubResource( 4 )
 text = "43110"
 align = 1
 placeholder_text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
@@ -244,11 +244,11 @@ flat = true
 
 [node name="buffer_explanation" type="Label" parent="VBoxContainer"]
 visible = false
-margin_top = 398.0
-margin_right = 300.0
-margin_bottom = 463.0
+margin_top = 428.0
+margin_right = 1001.0
+margin_bottom = 459.0
 custom_colors/font_color = Color( 1, 1, 1, 0.278431 )
-text = "You may be wondering what the Buffer Kb doesand I am here to tell you, it's awesome, it's sweet and it helps you. Just like kinder surprise but very differently."
+text = "Godot's default Websocket Buffer is very small (16Kb). This represents the max file size you can store/receive in ZeroNet. You are advised to raise this limit to suit your needs. At least 5MB (5120 Kb) recommended."
 autowrap = true
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
@@ -261,8 +261,8 @@ rect_min_size = Vector2( 0, 30 )
 margin_right = 148.0
 margin_bottom = 30.0
 rect_min_size = Vector2( 148, 30 )
-custom_styles/focus = SubResource( 6 )
-custom_styles/normal = SubResource( 7 )
+custom_styles/focus = SubResource( 3 )
+custom_styles/normal = SubResource( 4 )
 text = "4096"
 align = 1
 placeholder_text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
@@ -272,8 +272,8 @@ margin_left = 152.0
 margin_right = 300.0
 margin_bottom = 30.0
 rect_min_size = Vector2( 148.43, 20 )
-custom_styles/focus = SubResource( 6 )
-custom_styles/normal = SubResource( 7 )
+custom_styles/focus = SubResource( 3 )
+custom_styles/normal = SubResource( 4 )
 text = "4096"
 align = 1
 placeholder_text = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
@@ -298,7 +298,7 @@ margin_top = -200.0
 margin_right = 100.0
 margin_bottom = 200.0
 rect_min_size = Vector2( 200, 400 )
-theme = SubResource( 8 )
+theme = SubResource( 5 )
 
 [node name="ColorRect" type="ColorRect" parent="popup"]
 anchor_right = 1.0
