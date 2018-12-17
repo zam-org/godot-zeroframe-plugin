@@ -1,7 +1,8 @@
 tool
 extends Node
 
-var ZeroFrame = preload("res://addons/ZeroFrame/ZeroFrame.gd")
+onready var ZeroFrame_file = preload("res://addons/ZeroFrame/ZeroFrame.gd")
+onready var ZeroFrame = ZeroFrame_file.new()
 var config_file = "res://addons/ZeroFrame/config.cfg"
 
 func refresh_values():
@@ -29,11 +30,16 @@ func _on_zeronet_address_edit_text_changed(address):
 
 func _on_zeronet_port_edit_text_changed(port):
 	save_setting("zeroframe", "zeronet_port", int(port))
-
+	
 func _on_check_button_pressed():
-	# Connect to site
-	# TODO: Timeout and complain if timeout reached
-	yield(ZeroFrame.use_site(ZeroFrame._site_address), "site_connected")
+	# Set status
+	$VBoxContainer2/CenterContainer2/connection_status.text = "Checking connection..."
+	
+	# Connect to site. Timeout and complain if timeout reached
+	if yield(ZeroFrame.use_site($VBoxContainer/site_address_edit.text), "site_connected"):
+		$VBoxContainer2/CenterContainer2/connection_status.text = "Connection successful!"
+	else:
+		$VBoxContainer2/CenterContainer2/connection_status.text = "Connection timed out"
 	
 func _on_buffer_kb_button_pressed():
 	$VBoxContainer/buffer_explanation.visible = !$VBoxContainer/buffer_explanation.visible
@@ -49,16 +55,13 @@ func _on_automatic_limit_toggled(button_pressed):
 		$VBoxContainer/center/HBoxContainer/max_out.editable = true
 		save_setting("zeroframe", "automatic_buffer_kb", false)		
 
-
 func _on_max_in_text_changed(new_in_limit):
 	ProjectSettings.set_setting("network/limits/websocket_client/max_in_buffer_kb", new_in_limit)
 	save_setting("zeroframe", "max_in_buffer_kb", new_in_limit)
 
-
 func _on_max_out_text_changed(new_out_limit):
 	ProjectSettings.set_setting("network/limits/websocket_client/max_out_buffer_kb", new_out_limit)
 	save_setting("zeroframe", "max_out_buffer_kb", new_out_limit)	
-
 
 func save_setting(section, key, value):
 	var file = ConfigFile.new()

@@ -1,10 +1,13 @@
 extends Node
 
-var _site_address = "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D"
-var _daemon_address = "127.0.0.1"
-var _daemon_port = 43110
+# Get values from the config file
+# The third value is the default, in case the config file does not exist
+onready var _daemon_address = _load_setting("zeroframe", "zeronet_address", "127.0.0.1")
+onready var _daemon_port = int(_load_setting("zeroframe", "zeronet_port", 43110))
+var _site_connection_timeout = 1.0
 
 var config_file = "res://addons/ZeroFrame/config.cfg"
+var _site_connected = false
 
 var ca_addresses = {
 	"zeroid": "zeroid.bit"
@@ -25,13 +28,7 @@ var _wrapper_key = ""
 var _wrapper_key_regex = RegEx.new()
 
 # Called when the node enters the scene tree for the first time.
-func _init():
-	# here we get values from the config.cfg file
-	# the third value is the default, in case the config file does not exist
-	_site_address = _load_setting("zeroframe", "site_address", "1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D")
-	_daemon_address = _load_setting("zeroframe", "zeronet_address", "127.0.0.1")
-	_daemon_port = int(_load_setting("zeroframe", "zeronet_port", 43110))
-	
+func _ready():
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 	
@@ -171,8 +168,14 @@ func _solve_zeroid_challenge(challenge):
 # TODO: Ability to connect to multiple zites at once?
 func register_zeroid(username):
 	print("Registering user...")
+	
+	var clearnet_reg_site = "zeroid.qc.to"
+	
 	# Set ZeroID as the site to use
-	yield(use_site(ca_addresses["zeroid"]), "site_connected")
+	var success = yield(use_site(ca_addresses["zeroid"]), "site_connected")
+	if not success:
+		print("Unable to connect to site")
+		return "Unable to connect to ZeroID"
 	
 	print("Connected to ZeroID")
 	
@@ -221,17 +224,20 @@ func register_zeroid(username):
 	print("Registering (1/2) with: ", JSON.print(registration_data))
 
 	# Get challenge
-	var response_json = _make_http_request("zeroid.qc.to",
+	var request = _make_http_request(clearnet_reg_site,
 										   80,
 										   "/ZeroID/request.php",
 										   registration_data,
 										   HTTPClient.METHOD_POST)
 										
-	response = JSON.parse(response_json)
+	if request.error != null:
+		print("Unable to connect to", clearnet_reg_site)
+	
+	response = JSON.parse(request.data)
 	if response.error != OK:
 		# Received an error instead of data
 		# Give up and return error
-		return response_json
+		return "Non-JSON data received from " + clearnet_reg_site + ": " + request.data
 		
 	response = response.result
 
@@ -241,16 +247,19 @@ func register_zeroid(username):
 	registration_data["work_id"] = response["work_id"]
 	registration_data["work_solution"] = _solve_zeroid_challenge(response["work_task"])
 	print("Registering (2/2) with: ", JSON.print(registration_data))
-	#return "faking end"
+	
 	# Send challenge solution
-	response = _make_http_request("zeroid.qc.to",
+	request = _make_http_request("zeroid.qc.to",
 								  80,
 								  "/ZeroID/solution.php",
 								  registration_data,
-								  HTTPClient.METHOD_POST)
+								  HTTPClient.METHOD_POST).data
+								
+	if request.error != null:
+		print("Unable to connect to", clearnet_reg_site)
 	
 	# Ensure registration was successful
-	if response != "OK":
+	if request.data != "OK":
 		# Not successful, return reason
 		return response
 		
@@ -291,6 +300,7 @@ func register_zeroid(username):
 func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD_GET):
 	var err = 0
 	var http = HTTPClient.new() # Create the Client
+	var response = {"data": "", "error": null}
 	
 	err = http.connect_to_host(host, port, port == 443) # Connect to host/port
 	assert(err == OK) # Make sure connection was OK
@@ -300,7 +310,10 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 		http.poll()
 		OS.delay_msec(300)
 	
-	assert(http.get_status() == HTTPClient.STATUS_CONNECTED) # Could not connect
+	if http.get_status() != HTTPClient.STATUS_CONNECTED:
+		# Could not connect
+		response.error = "Unable to connect to host"
+		return response
 	
 	# Different headers for POST vs. GET
 	var headers = ["User-Agent: Pirulo/1.0 (Godot)"]
@@ -313,14 +326,18 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 	
 	# Request a page from the site (this one was chunked..)
 	err = http.request(method_type, path, headers, payload) 
-	assert(err == OK) # Make sure all is OK
+	if err != OK:
+		response.error = "Unable to request data from site"
+		return response
 	
 	while http.get_status() == HTTPClient.STATUS_REQUESTING:
 	    # Keep polling until the request is going on
 		http.poll()
 		OS.delay_msec(500)
 	
-	assert(http.get_status() == HTTPClient.STATUS_BODY or http.get_status() == HTTPClient.STATUS_CONNECTED) # Make sure request finished well.
+	if http.get_status() != HTTPClient.STATUS_BODY or http.get_status() != HTTPClient.STATUS_CONNECTED: # Make sure request finished well.
+		response.error = "Request finished prematurely"
+		return response
 	
 	if http.has_response():
 		# If there is a response..
@@ -340,7 +357,8 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 			else:
 				rb = rb + chunk # Append to read buffer
 		
-		return rb.get_string_from_ascii()
+		response.data = rb.get_string_from_ascii()
+		return response
 		
 # Get available certs that the current site supports
 func get_available_certs():
@@ -355,7 +373,11 @@ func select_cert(id):
 # Retrieve the wrapper_key of a ZeroNet website
 func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
-	var text = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
+	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
+	if request.error != null:
+		return ""
+	
+	var text = request.data
 	
     # Parse text and grab wrapper key
 	var matches = _wrapper_key_regex.search(text)
@@ -381,22 +403,29 @@ func set_daemon_address(host, port):
 	_daemon_address = host
 	_daemon_port = port
 	
+# Calls site_connected after a certain amount of seconds
+func _site_connect_timeout():
+	yield(get_tree().create_timer(_site_connection_timeout), "timeout")
+	emit_signal("site_connected", false)
+	
 # Use this site for future commands
 func use_site(site_address):
 	# Remove any previous websocket connection
-	_ws_client.disconnect_from_host()
-	
+	if _ws_client != null:
+		_ws_client.disconnect_from_host()
+		
 	_ws_client = new_ws_client()
+	_site_connected = false
 	
-	# Keep track of new address
-	_site_address = site_address
+	# Set timeout timer
+	_site_connect_timeout()
 	
 	# Get wrapper key of the site
 	_wrapper_key = get_wrapper_key(site_address)
 	
 	if _wrapper_key == "":
 		print("Unable to connect to ZeroNet")
-		return null
+		return self
 	
 	# Open up WebSocket connection to the daemon
 	var ws_url = "ws://" + _daemon_address + ":" \
@@ -407,12 +436,17 @@ func use_site(site_address):
 	
 	return self
 	
+func _connection_established(established):
+	if not _site_connected:
+		_site_connected = true
+		emit_signal("site_connected", established)
+	
 func _ws_connection_established(protocol):
 	print("Connection established with protocol %s!" % protocol)
 	# Set sending websocket data as text, which ZeroNet prefers, rather than binary
 	_ws_client.get_peer(1).set_write_mode(WebSocketPeer.WRITE_MODE_TEXT)
 	
-	emit_signal("site_connected")
+	_connection_established(true)
 	
 func _ws_connection_error():
 	print("Websocket connection failed!")
@@ -432,7 +466,9 @@ func _be_external_program():
 		return
 	
 	# Open a connection to a ZeroNet site
-	yield(use_site(site_address), "site_connected")
+	if not yield(use_site(site_address), "site_connected"):
+		print("Unable to connect to site")
+		return
 	
 	# Get available users
 	#var users = get_users()
