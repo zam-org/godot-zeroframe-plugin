@@ -1,20 +1,9 @@
 extends Node
 
-# Get values from the config file
-# The third value is the default, in case the config file does not exist
-onready var _daemon_address = _load_setting("zeroframe", "zeronet_address", "127.0.0.1")
-onready var _daemon_port = int(_load_setting("zeroframe", "zeronet_port", 43110))
-var _site_connection_timeout = 1.0
-
-var config_file = "res://addons/ZeroFrame/config.cfg"
-var _site_connected = false
-
-var _ca_addresses = {
-	"zeroid": "zeroid.bit"
-}
-
 # Emitted when a websocket connection to a ZeroNet site completed successfully
 signal site_connected
+# Emitted when a certain amount of time has passed
+signal timeout
 # Emitted when a command completes successfully. Returns cmd ID and response data
 signal command_completed(response, type)
 # Emitted when a site notification is received
@@ -22,21 +11,57 @@ signal notification_received(notification)
 # Emitted when the site files have been externally updated
 signal site_updated(message)
 
-var _ws_client 
-var _wrapper_key = ""
-var _wrapper_key_regex = RegEx.new()
+var _daemon_address: String
+var _daemon_port: int
 
-# Called when the node enters the scene tree for the first time.
-func _ready():
+var timeout_counter = 0
+var timeout_limit = 0
+
+var _wrapper_key: String
+var _site_connection_timeout = 1.0
+var _site_connected = false
+var _ca_addresses = {
+	"zeroid": "zeroid.bit"
+}
+var _ws_client: WebSocketClient
+var _wrapper_key_regex: RegEx
+
+var config_file_path = "res://addons/ZeroFrame/config.cfg"
+var config = ConfigFile.new()
+
+# Called when a node is instantiated
+func _init(config_file=config_file_path, use_config_file=true, daemon_address="127.0.0.1", daemon_port=43110):
+	# Attempt to retrieve daemon address and port from config file
+	if use_config_file:
+		if config.load(config_file) == OK:
+			_daemon_address = config.get_value("zeroframe", "daemon_address", daemon_address)
+			_daemon_port = config.get_value("zeroframe", "daemon_port", daemon_port)
+		else:
+			print("No address/port specified and config file not available at: ", config_file)
+			return
+	else:
+		# Retrieve daemon information from the constructor
+		_daemon_address = daemon_address
+		_daemon_port = daemon_port
+	
+	# Create a WebSocket client
+	_ws_client = new_ws_client()
+
 	# Regex for finding wrapper_key of ZeroNet site
+	_wrapper_key_regex = RegEx.new()
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 	
-	# Create WebSocket client
-	_ws_client = new_ws_client()
-	
-	_be_external_program()
-	
+# Called every frame
 func _process(delta):
+	# Serves as an implementation of timer
+	# which doesn't seem to work in this file
+	if timeout_limit > 0:
+		timeout_counter += delta
+		if timeout_counter >= timeout_limit:
+			emit_signal("timeout")
+			timeout_counter = 0
+			timeout_limit = 0
+		
 	if _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
 		_ws_client.poll()
 		if _ws_client.get_peer(1).get_available_packet_count() > 0:
@@ -58,16 +83,7 @@ func _process(delta):
 				_:
 					print("Unknown websocket data received:", response)
 	
-func _load_setting(section, key, default):
-	var file = ConfigFile.new()
-	var err = file.load(config_file)
-	if err != null:
-		print("Error loading ZeroNet config file")
-		return default
-		
-	var result = file.get_value(section, key, default)
-	return result
-				
+# Creates a new WebSocket client
 func new_ws_client():
 	_ws_client = WebSocketClient.new()
 	
@@ -79,8 +95,8 @@ func new_ws_client():
 	
 	return _ws_client
 	
-# Searches through dictionary of users for an auth address
-# Helper function for _get_zeroid_cert
+# Searches through a dictionary of users for an auth address
+# Helper function for ZeroID registration
 func _search_zeroid_users(users, auth_address):
 	for username in users:
 		var cert = users[username]
@@ -117,6 +133,7 @@ func _search_zeroid_users(users, auth_address):
 	return ""
 				
 # Retrieve the cert information of a ZeroID user given their auth_address
+# Helper function for ZeroID registration
 func _get_zeroid_cert(auth_address):
 	# Get set of archived ZeroID users
 	var response = yield(
@@ -143,6 +160,8 @@ func _get_zeroid_cert(auth_address):
 		
 	return _search_zeroid_users(users, auth_address)
 				
+# Solve the ZeroID challenge question
+# Helper function for ZeroID registration
 func _solve_zeroid_challenge(challenge):
 	# Registering with ZeroID requires both connecting to a
 	# centralized server and completing a challenge/response process.
@@ -169,7 +188,7 @@ func _solve_zeroid_challenge(challenge):
 # connection, which will need to be re-established if necessary
 # TODO: Ability to connect to multiple zites at once?
 func register_zeroid(username):
-	print("Registering user...")
+	print("Registering user with ZeroID: ", username)
 	
 	var clearnet_reg_site = "zeroid.qc.to"
 	
@@ -178,15 +197,12 @@ func register_zeroid(username):
 	if not success:
 		return "Unable to connect to ZeroID"
 	
-	print("Connected to ZeroID")
-	
 	# Retrieve information from siteInfo
 	var response = yield(cmd("siteInfo", {}), "command_completed")
 	var site_info = response.result
 	
 	# Retrieve current public key/auth address
 	var auth_address = site_info["auth_address"]
-	print("Got auth address:", auth_address)
 	
 	# Check if this auth_address has already been registered
 	var cert = yield(_get_zeroid_cert(auth_address), "completed")
@@ -204,7 +220,6 @@ func register_zeroid(username):
 			"cert": cert_sign,
 		}), "command_completed")
 		
-		# Why does this just return and hang???
 		print("This user already exists:", response)
 		
 		if response.type == "confirm":
@@ -226,10 +241,10 @@ func register_zeroid(username):
 
 	# Get challenge
 	var request = _make_http_request(clearnet_reg_site,
-										   80,
-										   "/ZeroID/request.php",
-										   registration_data,
-										   HTTPClient.METHOD_POST)
+										80,
+										"/ZeroID/request.php",
+										registration_data,
+										HTTPClient.METHOD_POST)
 										
 	if request.error != null:
 		print("Unable to connect to", clearnet_reg_site)
@@ -251,10 +266,10 @@ func register_zeroid(username):
 	
 	# Send challenge solution
 	request = _make_http_request("zeroid.qc.to",
-								  80,
-								  "/ZeroID/solution.php",
-								  registration_data,
-								  HTTPClient.METHOD_POST).data
+								80,
+								"/ZeroID/solution.php",
+								registration_data,
+								HTTPClient.METHOD_POST).data
 								
 	if request.error != null:
 		print("Unable to connect to", clearnet_reg_site)
@@ -303,8 +318,6 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 	var http = HTTPClient.new() # Create the Client
 	var response = {"data": "", "error": null}
 	
-	print("Connecting to: ", host, ":", port, path, payload)
-	
 	err = http.connect_to_host(host, port, port == 443) # Connect to host/port
 	assert(err == OK) # Make sure connection was OK
 	
@@ -334,7 +347,7 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 		return response
 
 	while http.get_status() == HTTPClient.STATUS_REQUESTING:
-	    # Keep polling while the request is ongoing
+		# Keep polling while the request is ongoing
 		http.poll()
 		OS.delay_msec(500)
 	
@@ -349,11 +362,11 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 		var rb = PoolByteArray() # Array that will hold the data
 	
 		while http.get_status() == HTTPClient.STATUS_BODY:
-	        # While there is body left to be read
+			# While there is body left to be read
 			http.poll()
 			var chunk = http.read_response_body_chunk() # Get a chunk
 			if chunk.size() == 0:
-	            # Got nothing, wait for buffers to fill a bit
+				# Got nothing, wait for buffers to fill a bit
 				OS.delay_usec(1000)
 			else:
 				rb = rb + chunk # Append to read buffer
@@ -383,7 +396,7 @@ func get_wrapper_key(site_address):
 	
 	var text = request.data
 	
-    # Parse text and grab wrapper key
+	# Parse text and grab wrapper key
 	var matches = _wrapper_key_regex.search(text)
 	
 	# Check that we got a match on the wrapper_key
@@ -403,17 +416,21 @@ func cmd(command, parameters):
 	return self
 	
 # Set custom zeronet daemon host address and port
-func set_daemon_address(host, port):
+func set_daemon(host, port):
 	_daemon_address = host
 	_daemon_port = port
 	
 # Calls site_connected after a certain amount of seconds
 func _site_connect_timeout():
-	yield(get_tree().create_timer(_site_connection_timeout), "timeout")
-	emit_signal("site_connected", false)
+	timeout_limit = _site_connection_timeout
+	yield(self, "timeout")
+	if not _site_connected:
+		emit_signal("site_connected", false)
 	
 # Use this site for future commands
 func use_site(site_address):
+	print("Connecting to: ", _daemon_address, ":", _daemon_port)
+	
 	# Remove any previous websocket connection
 	if _ws_client != null:
 		_ws_client.disconnect_from_host()

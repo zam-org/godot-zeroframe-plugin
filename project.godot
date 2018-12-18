@@ -30,8 +30,8 @@ enabled=PoolStringArray( "ZeroFrame" )
 
 [network]
 
-limits/websocket_client/max_in_buffer_kb="4096"
-limits/websocket_client/max_out_buffer_kb="4096"
+limits/websocket_client/max_in_buffer_kb=16
+limits/websocket_client/max_out_buffer_kb=16
 
 [newtwork]
 
