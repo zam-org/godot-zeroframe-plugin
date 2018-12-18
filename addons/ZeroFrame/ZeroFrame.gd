@@ -9,13 +9,12 @@ var _site_connection_timeout = 1.0
 var config_file = "res://addons/ZeroFrame/config.cfg"
 var _site_connected = false
 
-var ca_addresses = {
+var _ca_addresses = {
 	"zeroid": "zeroid.bit"
 }
 
 # Emitted when a websocket connection to a ZeroNet site completed successfully
 signal site_connected
-
 # Emitted when a command completes successfully. Returns cmd ID and response data
 signal command_completed(response, type)
 # Emitted when a site notification is received
@@ -62,6 +61,9 @@ func _process(delta):
 func _load_setting(section, key, default):
 	var file = ConfigFile.new()
 	var err = file.load(config_file)
+	if err != null:
+		print("Error loading ZeroNet config file")
+		return default
 		
 	var result = file.get_value(section, key, default)
 	return result
@@ -172,9 +174,8 @@ func register_zeroid(username):
 	var clearnet_reg_site = "zeroid.qc.to"
 	
 	# Set ZeroID as the site to use
-	var success = yield(use_site(ca_addresses["zeroid"]), "site_connected")
+	var success = yield(use_site(_ca_addresses["zeroid"]), "site_connected")
 	if not success:
-		print("Unable to connect to site")
 		return "Unable to connect to ZeroID"
 	
 	print("Connected to ZeroID")
@@ -197,7 +198,7 @@ func register_zeroid(username):
 		
 		# Add cert to the client
 		response = yield(cmd("certAdd", {
-			"domain": ca_addresses["zeroid"],
+			"domain": _ca_addresses["zeroid"],
 			"auth_type": auth_type,
 			"auth_user_name": username,
 			"cert": cert_sign,
@@ -277,7 +278,7 @@ func register_zeroid(username):
 	
 	# Add cert to the client
 	response = yield(cmd("certAdd", {
-		"domain": ca_addresses["zeroid"],
+		"domain": _ca_addresses["zeroid"],
 		"auth_type": auth_type,
 		"auth_user_name": username,
 		"cert": cert_sign,
@@ -301,6 +302,8 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 	var err = 0
 	var http = HTTPClient.new() # Create the Client
 	var response = {"data": "", "error": null}
+	
+	print("Connecting to: ", host, ":", port, path, payload)
 	
 	err = http.connect_to_host(host, port, port == 443) # Connect to host/port
 	assert(err == OK) # Make sure connection was OK
@@ -329,19 +332,17 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 	if err != OK:
 		response.error = "Unable to request data from site"
 		return response
-	
+
 	while http.get_status() == HTTPClient.STATUS_REQUESTING:
-	    # Keep polling until the request is going on
+	    # Keep polling while the request is ongoing
 		http.poll()
 		OS.delay_msec(500)
 	
-	if http.get_status() != HTTPClient.STATUS_BODY or http.get_status() != HTTPClient.STATUS_CONNECTED: # Make sure request finished well.
+	if http.get_status() != HTTPClient.STATUS_BODY and http.get_status() != HTTPClient.STATUS_CONNECTED: # Make sure request finishes
 		response.error = "Request finished prematurely"
 		return response
 	
 	if http.has_response():
-		# If there is a response..
-		
 		headers = http.get_response_headers_as_dictionary() # Get response headers
 	
 		# Getting the HTTP Body
@@ -359,7 +360,9 @@ func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD
 		
 		response.data = rb.get_string_from_ascii()
 		return response
-		
+
+	return "No response"
+
 # Get available certs that the current site supports
 func get_available_certs():
 	# TODO: Get certs through selectCert. HTML processing for now
@@ -375,6 +378,7 @@ func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
 	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
 	if request.error != null:
+		print("Got error with retrieving wrapper_key: ", request.error)
 		return ""
 	
 	var text = request.data
