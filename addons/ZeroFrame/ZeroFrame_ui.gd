@@ -40,7 +40,7 @@ func refresh_values():
 	$VBoxContainer/center/HBoxContainer/max_in.text = str(ProjectSettings.get_setting("network/limits/websocket_client/max_in_buffer_kb"))
 	$VBoxContainer/center/HBoxContainer/max_out.text = str(ProjectSettings.get_setting("network/limits/websocket_client/max_out_buffer_kb"))
 	
-	zeroFrame.set_daemon($VBoxContainer/zeronet_address_edit.text, $VBoxContainer/zeronet_port_edit.text)
+	zeroFrame.set_daemon($VBoxContainer/zeronet_address_edit.text, int($VBoxContainer/zeronet_port_edit.text))
 	
 func _on_site_address_edit_text_changed(address):
 	save_setting("zeroframe", "site_address", address)
