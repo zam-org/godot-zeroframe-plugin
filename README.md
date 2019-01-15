@@ -50,11 +50,11 @@ var score = {"score": 500}
 # ZeroNet expects data as base64, so convert it to that format
 var data = Marshalls.utf8_to_base64(JSON.print(score))
 
-# Make `fileWrite` request to ZeroNet. Store the file at `inner_path`, with the contents `data`
+# Make a `fileWrite` request to ZeroNet. Store the file at `inner_path`, with the contents `data`
 # `yield` blocks until storage is complete
 var response = yield(cmd("fileWrite", {"inner_path": inner_path, "content_base64": data}), "command_completed")
 
-# Check the response. If "ok", then it was successful!
+# Check the response. If "ok", then it was successful
 print("Store response: ", response)
 if response == "ok":
     print("File successfully stored at '%s'!" % inner_path)
@@ -112,4 +112,4 @@ After this you'll be able to execute any ol' `cmd()` you like.
 
 ### `set_daemon(host: string, port: int)`
 
-Allows you to configure a custom `host` address and `port` number for the ZeroNet proxy. The default values are `127.0.0.1` for host and `43110` for port, as those are the values ZeroNet uses by default.
+Allows you to configure a custom `host` address and `port` number for the ZeroNet proxy. The default values are `127.0.0.1` for host and `43110` for port, as those are the standard ZeroNet values.
