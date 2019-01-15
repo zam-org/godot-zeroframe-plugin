@@ -52,7 +52,7 @@ var data = Marshalls.utf8_to_base64(JSON.print(score))
 
 # Make a `fileWrite` request to ZeroNet. Store the file at `inner_path`, with the contents `data`
 # `yield` blocks until storage is complete
-var response = yield(cmd("fileWrite", {"inner_path": inner_path, "content_base64": data}), "command_completed")
+var response = yield(ZeroFrame.cmd("fileWrite", {"inner_path": inner_path, "content_base64": data}), "command_completed")
 
 # Check the response. If "ok", then it was successful
 print("Store response: ", response)
@@ -60,7 +60,7 @@ if response == "ok":
     print("File successfully stored at '%s'!" % inner_path)
 
 # Publish our changes to peers
-response = yield(cmd("sitePublish", {"sign": true}), "command_completed")
+response = yield(ZeroFrame.cmd("sitePublish", {"sign": true}), "command_completed")
 ```
 
 ```
@@ -72,7 +72,7 @@ And then retrieving that data later, or from another player's computer:
 
 ```python
 # Retrieve data using the `fileGet` command. Same `inner_path`
-response = yield(cmd("fileGet", {"inner_path": inner_path}), "command_completed")
+response = yield(ZeroFrame.cmd("fileGet", {"inner_path": inner_path}), "command_completed")
 
 # Score was stored as JSON, parse JSON back to Godot dictionary
 var user_data = JSON.parse(response.result)
@@ -98,7 +98,7 @@ Connecting to a ZeroNet site is fairly simple:
 var site_address = "1vcpDyMSZWDMmsD81Z6zApFStPvr2j728"
 
 # Open a connection to a ZeroNet site
-if not yield(use_site(site_address), "site_connected"):
+if not yield(ZeroFrame.use_site(site_address), "site_connected"):
     print("Unable to connect to site")
     return
 print("Connected to %s." % site_address)
@@ -113,3 +113,10 @@ After this you'll be able to execute any ol' `cmd()` you like.
 ### `set_daemon(host: string, port: int)`
 
 Allows you to configure a custom `host` address and `port` number for the ZeroNet proxy. The default values are `127.0.0.1` for host and `43110` for port, as those are the standard ZeroNet values.
+
+```python
+# Connect to a custom ZeroNet instance
+ZeroFrame.set_daemon("192.168.1.15", 43110)
+```
+
+This can also be done using the ZeroFrame panel in Godot's UI.
