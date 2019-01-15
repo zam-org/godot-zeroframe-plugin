@@ -33,7 +33,7 @@ Finally, the ZeroFrame plugin will not work without a running ZeroNet instance. 
 
 If you've set your AutoLoad up correctly, then you should have a `ZeroFrame` variable available to you in every script. The methods for which are documented below:
 
-**`cmd(command_id: string, parameters: dictionary)`**
+### `cmd(command_id: string, parameters: dictionary)`
 
 `cmd` is the method that ZeroFrame relies on. It takes requests from Godot, sends them over a WebSocket connection to a running ZeroNet process, and returns the result.
 
@@ -87,7 +87,7 @@ print(user_data.result)
 
 And that's all! The player data is now stored on the network and the player can shutdown their computer without having to worry about losing their data.
 
-**`use_site(site_address: string)`**
+### `use_site(site_address: string)` 
 
 Before you can start issuing any `cmd`s however, you'll need to connect to a ZeroNet site first. Every ZeroNet site has an address, something akin to `1HeLLo4uzjaLetFx6NH3PMwFP3qbRbTf3D`, which is the default ZeroNet site if you're actually using ZeroNet in the browser. Now you can't just go around storing your game data on any old site. If you don't have your own yet, read [Creating a New ZeroNet site](https://zeronet.io/docs/using_zeronet/create_new_site/) to get one!
 
@@ -110,6 +110,6 @@ Connected to 1vcpDyMSZWDMmsD81Z6zApFStPvr2j728.
 
 After this you'll be able to execute any ol' `cmd()` you like.
 
-**`set_daemon(host: string, port: int)`**
+### `set_daemon(host: string, port: int)`
 
 Allows you to configure a custom `host` address and `port` number for the ZeroNet proxy. The default values are `127.0.0.1` for host and `43110` for port, as those are the values ZeroNet uses by default.
