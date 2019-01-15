@@ -387,7 +387,7 @@ func select_cert(id):
 	pass
 
 # Retrieve the wrapper_key of a ZeroNet website
-func get_wrapper_key(site_address):
+func _get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
 	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
 	if request.error != null:
@@ -442,7 +442,7 @@ func use_site(site_address):
 	_site_connect_timeout()
 
 	# Get wrapper key of the site
-	_wrapper_key = get_wrapper_key(site_address)
+	_wrapper_key = _get_wrapper_key(site_address)
 
 	if _wrapper_key == "":
 		print("Unable to connect to ZeroNet")
