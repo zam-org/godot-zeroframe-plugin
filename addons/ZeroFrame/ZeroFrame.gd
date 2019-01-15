@@ -1,3 +1,4 @@
+tool
 extends Node
 
 # Emitted when a websocket connection to a ZeroNet site completed successfully

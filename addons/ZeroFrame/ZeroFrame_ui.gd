@@ -8,7 +8,7 @@ var zeroFrame = preload("ZeroFrame.gd").new(config_file_path)
 
 func _process(delta):
 	# Check if zeroFrame is initialized yet
-	if funcref(zeroFrame, "_process") != null:
+	if zeroFrame.has_method("_process"):
 		zeroFrame._process(delta)
 
 func _ready():
