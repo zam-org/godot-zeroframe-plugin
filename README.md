@@ -23,6 +23,8 @@ Go to the 'AssetLib' tab in Godot and search for 'ZeroFrame'. You should find th
 this repository and copy the `addons/ZeroNet` folder to your game's `addons/`
 directory (create it if it doesn't exist).
 
+---
+
 No matter which method you choose, after installation you'll want to go to Godot's Menu and select Project > Project Settings. Select the Plugins tab, and here you should see 'ZeroFrame' as a downloaded plugin. Make sure to activate it.
 
 Next, head to the 'AutoLoad' tab and click the small folder icon next to the path field. Browse to `addons/ZeroFrame/ZeroFrame.gd` and select it. This will AutoLoad the ZeroFrame plugin and all you to use the `ZeroFrame` variable in your scripts.
