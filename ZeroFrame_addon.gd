@@ -5,7 +5,7 @@ var dock
 
 func _enter_tree():
 	add_custom_type("ZeroFrame", "Node", load("res://addons/ZeroFrame/ZeroFrame.gd"), load("res://addons/ZeroFrame/icon.png"))
-
+	
 	dock = preload("res://addons/ZeroFrame/ZeroFrame_ui.tscn").instance()
 
 	# Add the loaded scene to the docks

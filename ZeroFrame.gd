@@ -36,7 +36,7 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 	if use_config_file:
 		if config.load(config_file) == OK:
 			_daemon_address = config.get_value("zeroframe", "daemon_address", daemon_address)
-			_daemon_port = config.get_value("zeroframe", "daemon_port", daemon_port)
+			_daemon_port = int(config.get_value("zeroframe", "daemon_port", daemon_port))
 		else:
 			print("No address/port specified and config file not available at: ", config_file)
 			return
@@ -388,7 +388,7 @@ func select_cert(id):
 	pass
 
 # Retrieve the wrapper_key of a ZeroNet website
-func _get_wrapper_key(site_address):
+func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
 	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
 	if request.error != null:
@@ -443,7 +443,7 @@ func use_site(site_address):
 	_site_connect_timeout()
 
 	# Get wrapper key of the site
-	_wrapper_key = _get_wrapper_key(site_address)
+	_wrapper_key = get_wrapper_key(site_address)
 
 	if _wrapper_key == "":
 		print("Unable to connect to ZeroNet")
