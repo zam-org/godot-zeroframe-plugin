@@ -20,7 +20,7 @@ Go to the 'AssetLib' tab in Godot and search for 'ZeroFrame'. You should find th
 **Manual:**
 
 [Download](https://github.com/anoadragon453/godot-zeroframe-plugin/releases)
-this repository and copy the `addons/ZeroNet` folder to your game's `addons/`
+this repository, rename it to `ZeroFrame` and copy it to your game's `addons/`
 directory (create it if it doesn't exist).
 
 ---
