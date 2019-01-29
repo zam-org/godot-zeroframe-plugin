@@ -14,7 +14,7 @@ func _process(delta):
 func _ready():
 	# Load config file
 	var err = config.load(config_file_path)
-	
+
 	# If the config file has yet to exist
 	if err != OK:
 		print(OK)
