@@ -17,6 +17,7 @@ var _daemon_port: int
 
 var timeout_counter = 0
 var timeout_limit = 0
+var current_address = null
 
 var _wrapper_key: String
 var _site_connection_timeout = 1.0
@@ -312,6 +313,12 @@ func register_zeroid(username):
 			else:
 				return response
 
+# Login to zeroid.bit using a private key
+# This involves adding the private key to ZeroNet, then
+# getting the cert from ZeroID if it exists.
+func _login_with_zeroid(private_key):
+	#
+
 # Make a http/s request to a host.
 # payload is a string that will be sent in the request
 func _make_http_request(host, port, path, payload, method_type=HTTPClient.METHOD_GET):
@@ -455,6 +462,8 @@ func use_site(site_address):
 		+ "/Websocket?wrapper_key=%s" % _wrapper_key
 
 	_ws_client.connect_to_url(ws_url)
+
+	current_address = site_address
 
 	return self
 
