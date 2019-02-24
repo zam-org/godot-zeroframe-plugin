@@ -4,17 +4,11 @@ extends Node
 var config_file_path= "res://addons/ZeroFrame/config.cfg"
 var config = ConfigFile.new()
 
-var zeroFrame = preload("ZeroFrame.gd").new(config_file_path)
-
-func _process(delta):
-	# Check if zeroFrame is initialized yet
-	if zeroFrame.has_method("_process"):
-		zeroFrame._process(delta)
-
 func _ready():
+	
 	# Load config file
 	var err = config.load(config_file_path)
-	
+
 	# If the config file has yet to exist
 	if err != OK:
 		print(OK)
@@ -53,18 +47,18 @@ func refresh_values():
 	$VBoxContainer/center/HBoxContainer/max_in.text = str(ProjectSettings.get_setting("network/limits/websocket_client/max_in_buffer_kb"))
 	$VBoxContainer/center/HBoxContainer/max_out.text = str(ProjectSettings.get_setting("network/limits/websocket_client/max_out_buffer_kb"))
 
-	zeroFrame.set_daemon($VBoxContainer/zeronet_address_edit.text, int($VBoxContainer/zeronet_port_edit.text))
+	ZeroFrameCore.set_daemon($VBoxContainer/zeronet_address_edit.text, int($VBoxContainer/zeronet_port_edit.text))
 
 func _on_site_address_edit_text_changed(address):
 	save_setting("zeroframe", "site_address", address)
 
 func _on_zeronet_address_edit_text_changed(address):
 	save_setting("zeroframe", "zeronet_address", address)
-	zeroFrame.set_daemon(address, int($VBoxContainer/zeronet_port_edit.text))
+	ZeroFrameCore.set_daemon(address, int($VBoxContainer/zeronet_port_edit.text))
 
 func _on_zeronet_port_edit_text_changed(port):
 	var int_port = int(port)
-	zeroFrame.set_daemon($VBoxContainer/zeronet_address_edit.text, int_port)
+	ZeroFrameCore.set_daemon($VBoxContainer/zeronet_address_edit.text, int_port)
 	save_setting("zeroframe", "zeronet_port", port)
 
 func _on_check_button_pressed():
@@ -72,7 +66,7 @@ func _on_check_button_pressed():
 	$VBoxContainer2/CenterContainer2/connection_status.text = "Checking connection..."
 
 	# Connect to site. Complain if timeout reached
-	if yield(zeroFrame.use_site($VBoxContainer/site_address_edit.text), "site_connected"):
+	if yield(ZeroFrameCore.use_site($VBoxContainer/site_address_edit.text), "site_connected"):
 		$VBoxContainer2/CenterContainer2/connection_status.text = "Connection successful!"
 	else:
 		$VBoxContainer2/CenterContainer2/connection_status.text = "Connection timed out"
