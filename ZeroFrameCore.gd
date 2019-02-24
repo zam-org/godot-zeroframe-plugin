@@ -6,9 +6,11 @@ signal site_connected
 # Emitted when a certain amount of time has passed
 signal timeout
 # Emitted when a command completes successfully. Returns cmd ID and response data
-signal command_completed(response, type)
+signal command_completed(response_and_type)
 # Emitted when a site notification is received
 signal notification_received(notification)
+# Emitted when a prompt notification is received
+signal prompt_received(prompt_and_id)
 # Emitted when the site files have been externally updated
 signal site_updated(message)
 
@@ -70,12 +72,18 @@ func _process(delta):
 			var response = JSON.parse(_ws_client.get_peer(1).get_packet().get_string_from_utf8()).result
 			if typeof(response) != TYPE_DICTIONARY:
 				return
+				
+			# Parse result to a dictionary if not already parsed
+			if "result" in response and typeof(response["result"]) == TYPE_STRING:
+				response["result"] = JSON.parse(response["result"]).result
 
-			# Check if this is a response to a command or a site notification
+			# Check what type of response this is
 			var type = response["cmd"]
 			match type:
 				"notification":
-					emit_signal("notification_received", response)
+					emit_signal("notification_received", response["params"])
+				"prompt":
+					emit_signal("prompt_received", response["params"], response["id"])
 				"response":
 					emit_signal("command_completed", {"result": response["result"], "type": type})
 				"confirm":
@@ -117,7 +125,7 @@ func _search_zeroid_users(users, auth_address):
 					"command_completed"
 				)
 
-				cert = JSON.parse(response.result)["certs"][username]
+				cert = response.result["certs"][username]
 				info = cert.split(",")
 				var found_auth_address = info[1]
 
@@ -142,18 +150,16 @@ func _get_zeroid_cert(auth_address):
 		cmd("fileGet", {"inner_path": "data/users_archive.json"}),
 		"command_completed"
 	)
-	var users_json = response.result
 
-	var users = JSON.parse(users_json).result["users"]
+	var users = response.result["users"]
 
 	# Get set of latest ZeroID users
 	response = yield(
 		cmd("fileGet", {"inner_path": "data/users.json"}),
 		"command_completed"
 	)
-	users_json = response.result
 
-	var new_users = JSON.parse(users_json).result["users"]
+	var new_users = response.result["users"]
 
 	# Combine latest and archived user sets together
 	for user in new_users:
@@ -314,10 +320,40 @@ func register_zeroid(username):
 				return response
 
 # Login to zeroid.bit using a private key
-# This involves adding the private key to ZeroNet, then
+# Requires the MultiUser plugin to be enabled
+# This involves adding a private key (master seed) to ZeroNet, then
 # getting the cert from ZeroID if it exists.
-func _login_with_zeroid(private_key):
-	#
+#
+# Returns true if successful, false otherwise
+func login_zeroid(private_key):
+	# Request for the login form (We don't actually need to read the form HTML).
+	var id = yield(cmd("userLoginForm", {}), "prompt_received").id
+	
+	# Respond to the form with our private key.
+	var result = yield(cmd("response", private_key, id), "notification_received")
+	
+	# If "done", successful login. If "error", incorrect private key.
+	return result[0] == "done"
+	
+# Checks if the currently connected site has a given permission
+func site_has_permission(permission: String):
+	var site_info = yield(cmd("siteInfo", {}), "command_completed").result
+	return permission in site_info["settings"]["permissions"]
+	
+# Retrieve the master seed from the client
+# Requires the MultiUser plugin to be enabled
+#
+# So currently there isn't any easy way to do this over the WebSocket API, and as such
+# requires manual parsing of HTML (also requiring the MultiUser plugin to be enabled kind
+# of sucks). TODO Issue Num #
+# Essentially this uses an undocumented MultiUser API and parses the HTML response
+func retrieve_master_seed():
+	if not site_has_permission("ADMIN"):
+		print("Retrieving the master seed is not allowed on site's without ADMIN permission")
+
+	var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
+	print(html)
+	return html
 
 # Make a http/s request to a host.
 # payload is a string that will be sent in the request
@@ -415,9 +451,19 @@ func get_wrapper_key(site_address):
 	return matches.get_string(1)
 
 # Send a command to the ZeroNet daemon
-func cmd(command, parameters):
+func cmd(command: String, parameters = {}, to: int = 0):
 	# Send command with arguments to ZeroNet daemon over websocket
-	var contents = JSON.print({"cmd": command, "params": parameters, "id": 1000001})
+	# TODO: Increment ID?
+	
+	var contents = ""
+	
+	# On "prompt" cmds, you need to send "to" and "result" parameters
+	# Where "result" can be something other than a dictionary
+	if to != 0:
+		contents = JSON.print({"cmd": command, "to": to, "result": parameters, "id": 1000001})
+	else:
+		contents = JSON.print({"cmd": command, "params": parameters, "id": 1000001})
+		
 	print("Sending command:", contents)
 	_ws_client.get_peer(1).put_packet(contents.to_utf8())
 
@@ -461,13 +507,14 @@ func use_site(site_address):
 		+ str(_daemon_port) \
 		+ "/Websocket?wrapper_key=%s" % _wrapper_key
 
-	_ws_client.connect_to_url(ws_url)
+	var err = _ws_client.connect_to_url(ws_url, PoolStringArray(), false)
 
 	current_address = site_address
 
 	return self
 
 func _connection_established(established):
+	print("Established")
 	if not _site_connected:
 		_site_connected = true
 		emit_signal("site_connected", established)

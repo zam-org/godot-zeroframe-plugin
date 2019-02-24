@@ -5,6 +5,7 @@ var dock
 
 func _enter_tree():
 	add_custom_type("ZeroFrame", "Node", load("res://addons/ZeroFrame/ZeroFrame.gd"), load("res://addons/ZeroFrame/icon.png"))
+	add_custom_type("ZeroFrameCore", "Node", load("res://addons/ZeroFrame/ZeroFrameCore.gd"), load("res://addons/ZeroFrame/icon.png"))
 	
 	dock = preload("res://addons/ZeroFrame/ZeroFrame_ui.tscn").instance()
 
@@ -16,4 +17,5 @@ func _exit_tree():
 	remove_control_from_docks(dock)
 	# Erase the control from the memory
 	remove_custom_type("ZeroFrame")
+	remove_custom_type("ZeroFrameCore")
 #	dock.queue_free()
