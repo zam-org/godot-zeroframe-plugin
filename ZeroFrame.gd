@@ -19,6 +19,8 @@ var provider_domains = {
 	PROVIDER_ZEROID: "zeroid.bit"
 }
 
+var ZeroFrameCore = load('res://addons/ZeroFrame/ZeroFrameCore.gd')
+
 # Result is an object that contains a result and an error as either something
 # or nothing (null). This type is object returned by functions. Callers should
 # first check whether `error` is null or not. If non-null, an error occured
