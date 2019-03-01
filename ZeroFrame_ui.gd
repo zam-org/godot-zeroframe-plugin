@@ -4,6 +4,8 @@ extends Node
 var config_file_path= "res://addons/ZeroFrame/config.cfg"
 var config = ConfigFile.new()
 
+var ZeroFrameCore = load('res://addons/ZeroFrame/ZeroFrameCore.gd')
+
 func _ready():
 	
 	# Load config file
