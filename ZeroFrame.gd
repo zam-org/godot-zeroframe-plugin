@@ -266,6 +266,10 @@ func stop_zeronet():
 	res.error = ZeroFrameCore.stop_zeronet()
 	return res
 
+# Ensure ZeroNet is stopped if the game is exited
+func _exit_tree():
+	ZeroFrameCore.stop_zeronet()
+
 # ---------------- Misc ---------------- #
 
 func connect_to_site(site_address: String) -> Result:
