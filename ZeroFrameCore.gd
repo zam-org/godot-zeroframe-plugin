@@ -68,11 +68,15 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 
 	# Load ZeroNet addon if not using an external daemon
 	if not _external_daemon:
-		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd")
+		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd").new()
 
 func _log(args):
 	"""Log out an array of arguments in a consistent manner"""
-	print("[ZCore] ", args)
+	printraw("[ZCore] ")
+	for arg in args:
+		printraw(arg + " ")
+		
+	printraw("\n")
 
 func start_zeronet():
 	if _external_daemon:
@@ -387,8 +391,6 @@ func logout():
 	if _external_daemon:
 		return ("Cannot logout from an external ZeroNet instance without Multiuser" +
 		        "mode enabled (and the Multiuser plugin enabled on the daemon)")
-
-	# Remove the master seed from users.json manually
 	
 	# Check the file exists
 	var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
@@ -397,7 +399,7 @@ func logout():
 		return "Path to ZeroNet users file does not exist: " + users_file_path
 
 	# Remove all content in the file
-	users_file.open(users_file_path)
+	users_file.open(users_file_path, File.WRITE)
 	users_file.store_string("{}")
 	users_file.close()
 
