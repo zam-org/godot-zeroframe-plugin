@@ -99,7 +99,7 @@ func _process(delta):
 			timeout_counter = 0
 			timeout_limit = 0
 
-	if _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
+	if _ws_client != null and _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
 		_ws_client.poll()
 		if _ws_client.get_peer(1).get_available_packet_count() > 0:
 			var response = JSON.parse(_ws_client.get_peer(1).get_packet().get_string_from_utf8()).result
