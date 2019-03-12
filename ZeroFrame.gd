@@ -37,7 +37,7 @@ func login(username: String, private_key: String = "", provider: int = PROVIDER_
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			var response = yield(ZeroFrameCore.retrieve_master_seed(), "completed").result
+			var response = yield(ZeroFrameCore.login_zeroid(private_key), "completed").result
 			print(response)
 		_:
 			res.error = "Unknown provider"

@@ -367,11 +367,12 @@ func register_zeroid(username):
 # Achieves this goal in different ways depending on whether we're running in
 # Multiuser mode or not.
 # If in Multiuser mode, go through the usual Multiuser steps to logout and
-# login with a master seed
-# If not, replace the master seed in the embedded ZeroNet's users.json file and
-# then trigger ZeroID to add a cert
+# login with a private key
+# If not, convert the private key to a master seed ourselves then replace the
+# master seed in the embedded ZeroNet's users.json file and then trigger ZeroID
+# to add a cert
 # Returns true if successful, false otherwise
-func login_zeroid(master_seed):
+func login_zeroid(private_key):
 	if _multiuser_mode:
 		# Request for the login form (We don't actually need to read the form HTML).
 		var id = yield(cmd("userLoginForm", {}), "prompt_received").id
@@ -390,6 +391,8 @@ func login_zeroid(master_seed):
 
 		# Check if users.json is an empty '{}', if not then bail with:
 		# "Please log out before attempting to log in to a ZeroNet provider."
+
+		# Convert the private key to a master seed
 
 		# Place some key "ZeroFrameGodot" with key "master_seed" in the file
 
