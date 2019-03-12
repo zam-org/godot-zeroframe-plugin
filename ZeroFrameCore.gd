@@ -362,23 +362,46 @@ func register_zeroid(username):
 			else:
 				return response
 
-# Login to zeroid.bit using a private key
-# Requires the MultiUser plugin to be enabled
-# This involves adding a private key (master seed) to ZeroNet, then
-# getting the cert from ZeroID if it exists.
+# Login to zeroid.bit using a master seed
 #
+# Achieves this goal in different ways depending on whether we're running in
+# Multiuser mode or not.
+# If in Multiuser mode, go through the usual Multiuser steps to logout and
+# login with a master seed
+# If not, replace the master seed in the embedded ZeroNet's users.json file and
+# then trigger ZeroID to add a cert
 # Returns true if successful, false otherwise
-func login_zeroid(private_key):
-	# Request for the login form (We don't actually need to read the form HTML).
-	var id = yield(cmd("userLoginForm", {}), "prompt_received").id
-	
-	# Respond to the form with our private key.
-	var result = yield(cmd("response", private_key, id), "notification_received")
-	
-	# If "done", successful login. If "error", incorrect private key.
-	return result[0] == "done"
+func login_zeroid(master_seed):
+	if _multiuser_mode:
+		# Request for the login form (We don't actually need to read the form HTML).
+		var id = yield(cmd("userLoginForm", {}), "prompt_received").id
+		
+		# Respond to the form with our private key.
+		var result = yield(cmd("response", private_key, id), "notification_received")
+		
+		# If "done", successful login. If "error", incorrect private key.
+		return result[0] == "done"
+	else:
+		if _external_daemon:
+			_log(["Login can only be done on an external proxy in Multiuser mode"])
+			return false
+		
+		# Read the users.json
+
+		# Check if users.json is an empty '{}', if not then bail with:
+		# "Please log out before attempting to log in to a ZeroNet provider."
+
+		# Place some key "ZeroFrameGodot" with key "master_seed" in the file
+
+		# Save it back to users.json
+
+		# Call register_zeroid function to go through the certificate adding dance
+
+		return true
+
 
 # Log the user out of all accounts
+#
 # Achieves this goal in different ways depending on whether we're running in
 # Multiuser mode or not.
 # If in Multiuser mode, we simply remove the master seed from subsequent request
