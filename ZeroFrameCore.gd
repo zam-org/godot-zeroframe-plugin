@@ -128,15 +128,15 @@ func _process(delta):
 
 # Creates a new WebSocket client
 func _new_ws_client():
-	_ws_client = WebSocketClient.new()
+	var new_client = WebSocketClient.new()
 
 	# Websocket client signals
-	_ws_client.connect("connection_established", self, "_ws_connection_established")
-	_ws_client.connect("connection_succeeded", self, "_ws_connection_established")
-	_ws_client.connect("connection_error", self, "_ws_connection_error")
-	_ws_client.connect("server_close_request", self, "_ws_server_close_request")
+	new_client.connect("connection_established", self, "_ws_connection_established")
+	new_client.connect("connection_succeeded", self, "_ws_connection_established")
+	new_client.connect("connection_error", self, "_ws_connection_error")
+	new_client.connect("server_close_request", self, "_ws_server_close_request")
 
-	return _ws_client
+	return new_client
 
 # Searches through a dictionary of users for an auth address
 # Helper function for ZeroID registration
