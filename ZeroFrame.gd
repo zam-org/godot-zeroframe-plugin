@@ -60,8 +60,8 @@ func get_private_key(username: String, provider: int = PROVIDER_ZEROID) -> Resul
 	return res
 
 func logout(provider: int = PROVIDER_ZEROID) -> Result:
-	# TODO
 	var res = Result.new()
+	res.error = ZeroFrameCore.logout()
 	return res
 
 func is_logged_in(provider: int = PROVIDER_ZEROID) -> Result:
@@ -250,6 +250,20 @@ func remove_data(key: String) -> Result:
 		res.error = r.error
 		return res
 
+	return res
+
+# ---------- Daemon Management --------- #
+
+func start_zeronet():
+	"""Start an internal ZeroNet daemon"""
+	var res = Result.new()
+	res.error = ZeroFrameCore.start_zeronet()
+	return res
+
+func stop_zeronet():
+	"""Stop an internal ZeroNet daemon"""
+	var res = Result.new()
+	res.error = ZeroFrameCore.stop_zeronet()
 	return res
 
 # ---------------- Misc ---------------- #

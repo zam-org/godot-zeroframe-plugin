@@ -16,6 +16,9 @@ signal site_updated(message)
 
 var _daemon_address: String
 var _daemon_port: int
+var _multiuser_mode: bool
+var _external_daemon: bool
+var _ZeroNet_addon: Object
 
 var _wrapper_key: String
 var _site_connection_timeout = 1.0
@@ -30,6 +33,7 @@ var timeout_counter = 0
 var timeout_limit = 0
 var current_address = null
 
+var zeronet_addon_path = "res://addons/ZeroNet/"
 var config_file_path = "res://addons/ZeroFrame/config.cfg"
 var config = ConfigFile.new()
 
@@ -61,6 +65,29 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex = RegEx.new()
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
+
+	# Load ZeroNet addon if not using an external daemon
+	if not _external_daemon:
+		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd")
+
+# Logger function. For consistent logging printout
+# args is an array of items to print out
+func _log(args):
+	print("[ZCore] ", *args)
+
+func start_zeronet():
+	if not _ZeroNet_addon:
+		return "Option external_daemon has been set to true. Refusing to start"
+
+	# Start ZeroNet addon
+	_ZeroNet_addon.start(_daemon_port)
+
+func stop_zeronet():
+	if not _ZeroNet_addon:
+		return "Option external_daemon has been set to true. Refusing to stop"
+
+	# Stop ZeroNet addon
+	_ZeroNet_addon.stop()
 
 # Called every frame
 func _process(delta):
@@ -341,6 +368,37 @@ func login_zeroid(private_key):
 	
 	# If "done", successful login. If "error", incorrect private key.
 	return result[0] == "done"
+
+# Log the user out of all accounts
+# Achieves this goal in different ways depending on whether we're running in
+# Multiuser mode or not.
+# If in Multiuser mode, we simply remove the master seed from subsequent request
+# If not, we must remove the master seed from the users.json file
+func logout():
+	if _multiuser_mode:
+		# TODO: Remove master seed from requests
+		return
+
+	if _external_daemon:
+		return ("Cannot logout from an external ZeroNet instance without Multiuser" +
+		        "mode enabled (and the Multiuser plugin enabled on the daemon)")
+
+	# Remove the master seed from users.json manually
+	
+	# Check the file exists
+	var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
+	var users_file = File.new()
+	if not users_file.file_exists(users_file_path):
+		return "Path to ZeroNet users file does not exist: " + users_file_path
+
+	# Remove all content in the file
+	users_file.open(users_file_path)
+	users_file.store_string("{}")
+	users_file.close()
+
+	# Restart ZeroNet addon to clear user cache
+	_ZeroNet_addon.stop()
+	_ZeroNet_addon.start(_daemon_port)
 	
 # Checks if the currently connected site has a given permission
 func site_has_permission(permission: String):
