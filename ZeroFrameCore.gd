@@ -70,9 +70,8 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 	if not _external_daemon:
 		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd")
 
-# Logger function. For consistent logging printout
-# args is an array of items to print out
 func _log(args):
+	"""Log out an array of arguments in a consistent manner"""
 	print("[ZCore] ", *args)
 
 func start_zeronet():
