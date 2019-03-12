@@ -52,7 +52,7 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 			# ZeroNet addon (which must be placed at $root/addons/ZeroNet)
 			_external_daemon = config.get_value("zeroframe", "external_daemon", external_daemon)
 		else:
-			print("No address/port specified and config file not available at: ", config_file)
+			_log(["No address/port specified and config file not available at: ", config_file])
 			return
 	else:
 		# Retrieve daemon information from the constructor
@@ -124,7 +124,7 @@ func _process(delta):
 				"setSiteInfo":
 					emit_signal("site_updated", response)
 				_:
-					print("Unknown websocket data received:", response)
+					_log(["Unknown websocket data received:", response])
 
 # Creates a new WebSocket client
 func _new_ws_client():
@@ -229,7 +229,7 @@ func _solve_zeroid_challenge(challenge):
 # connection, which will need to be re-established if necessary
 # TODO: Ability to connect to multiple zites at once?
 func register_zeroid(username):
-	print("Registering user with ZeroID: ", username)
+	_log(["Registering user with ZeroID: ", username])
 
 	var clearnet_reg_site = "zeroid.qc.to"
 
@@ -261,7 +261,7 @@ func register_zeroid(username):
 			"cert": cert_sign,
 		}), "command_completed")
 
-		print("This user already exists:", response)
+		_log(["This user already exists:", response])
 
 		if response.type == "confirm":
 			# We already have a cert for this registrar
@@ -278,7 +278,7 @@ func register_zeroid(username):
 		"auth_address": auth_address,
 		"user_name": username,
 	}
-	print("Registering (1/2) with: ", JSON.print(registration_data))
+	_log(["Registering (1/2) with: ", JSON.print(registration_data)])
 
 	# Get challenge
 	var request = _make_http_request(clearnet_reg_site,
@@ -288,7 +288,7 @@ func register_zeroid(username):
 										HTTPClient.METHOD_POST)
 
 	if request.error != null:
-		print("Unable to connect to", clearnet_reg_site)
+		_log(["Unable to connect to", clearnet_reg_site])
 
 	response = JSON.parse(request.data)
 	if response.error != OK:
@@ -303,7 +303,7 @@ func register_zeroid(username):
 	# back to host
 	registration_data["work_id"] = response["work_id"]
 	registration_data["work_solution"] = _solve_zeroid_challenge(response["work_task"])
-	print("Registering (2/2) with: ", JSON.print(registration_data))
+	_log(["Registering (2/2) with: ", JSON.print(registration_data)])
 
 	# Send challenge solution
 	request = _make_http_request("zeroid.qc.to",
@@ -313,7 +313,7 @@ func register_zeroid(username):
 								HTTPClient.METHOD_POST).data
 
 	if request.error != null:
-		print("Unable to connect to", clearnet_reg_site)
+		_log(["Unable to connect to", clearnet_reg_site])
 
 	# Ensure registration was successful
 	if request.data != "OK":
@@ -321,9 +321,9 @@ func register_zeroid(username):
 		return response
 
 	# Wait for notification of site update
-	print("Waiting for site updated")
-	print("Site updated: ", yield(self, "site_updated"))
-	print("Updated!")
+	_log(["Waiting for site updated"])
+	_log(["Site updated: ", yield(self, "site_updated")])
+	_log(["Updated!"])
 
 	# Retrieve cert information from ZeroID site files
 	cert = _get_zeroid_cert(auth_address)
@@ -413,10 +413,10 @@ func site_has_permission(permission: String):
 # Essentially this uses an undocumented MultiUser API and parses the HTML response
 func retrieve_master_seed():
 	if not site_has_permission("ADMIN"):
-		print("Retrieving the master seed is not allowed on site's without ADMIN permission")
+		_log(["Retrieving the master seed is not allowed on site's without ADMIN permission"])
 
 	var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
-	print(html)
+	_log([html])
 	return html
 
 # Make a http/s request to a host.
@@ -499,7 +499,7 @@ func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
 	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
 	if request.error != null:
-		print("Got error with retrieving wrapper_key: ", request.error)
+		_log(["Got error with retrieving wrapper_key: ", request.error])
 		return ""
 
 	var text = request.data
@@ -528,7 +528,7 @@ func cmd(command: String, parameters = {}, to: int = 0):
 	else:
 		contents = JSON.print({"cmd": command, "params": parameters, "id": 1000001})
 		
-	print("Sending command:", contents)
+	_log(["Sending command:", contents])
 	_ws_client.get_peer(1).put_packet(contents.to_utf8())
 
 	return self
@@ -547,7 +547,7 @@ func _site_connect_timeout():
 
 # Use this site for future commands
 func use_site(site_address):
-	print("Connecting to: ", _daemon_address, ":", _daemon_port)
+	_log(["Connecting to: ", _daemon_address, ":", _daemon_port])
 
 	# Remove any previous websocket connection
 	if _ws_client != null:
@@ -563,7 +563,7 @@ func use_site(site_address):
 	_wrapper_key = get_wrapper_key(site_address)
 
 	if _wrapper_key == "":
-		print("Unable to connect to ZeroNet")
+		_log(["Unable to connect to ZeroNet"])
 		return self
 
 	# Open up WebSocket connection to the daemon
@@ -578,20 +578,20 @@ func use_site(site_address):
 	return self
 
 func _connection_established(established):
-	print("Established")
+	_log(["Established"])
 	if not _site_connected:
 		_site_connected = true
 		emit_signal("site_connected", established)
 
 func _ws_connection_established(protocol):
-	print("Connection established with protocol %s!" % protocol)
+	_log(["Connection established with protocol %s!" % protocol])
 	# Set sending websocket data as text, which ZeroNet prefers, rather than binary
 	_ws_client.get_peer(1).set_write_mode(WebSocketPeer.WRITE_MODE_TEXT)
 
 	_connection_established(true)
 
 func _ws_connection_error():
-	print("Websocket connection failed!")
+	_log(["Websocket connection failed!"])
 
 func _ws_server_close_request(error, reason):
-	print("Server issued close request!", error, reason)
+	_log(["Server issued close request!", error, reason])
