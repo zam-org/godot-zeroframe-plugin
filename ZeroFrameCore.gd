@@ -17,10 +17,6 @@ signal site_updated(message)
 var _daemon_address: String
 var _daemon_port: int
 
-var timeout_counter = 0
-var timeout_limit = 0
-var current_address = null
-
 var _wrapper_key: String
 var _site_connection_timeout = 1.0
 var _site_connected = false
@@ -30,16 +26,27 @@ var _ca_addresses = {
 var _ws_client: WebSocketClient
 var _wrapper_key_regex: RegEx
 
+var timeout_counter = 0
+var timeout_limit = 0
+var current_address = null
+
 var config_file_path = "res://addons/ZeroFrame/config.cfg"
 var config = ConfigFile.new()
 
 # Called when a node is instantiated
-func _init(config_file=config_file_path, use_config_file=true, daemon_address="127.0.0.1", daemon_port=43110):
+func _init(config_file=config_file_path, use_config_file=true, daemon_address="127.0.0.1", daemon_port=43110, multiuser_mode=false, external_daemon=false):
 	# Attempt to retrieve daemon address and port from config file
 	if use_config_file:
 		if config.load(config_file) == OK:
 			_daemon_address = config.get_value("zeroframe", "daemon_address", daemon_address)
 			_daemon_port = int(config.get_value("zeroframe", "daemon_port", daemon_port))
+
+			# Whether the ZeroNet daemon we're connecting to is using the Multiuser plugin
+			_multiuser_mode = config.get_value("zeroframe", "multiuser_mode", multiuser_mode)
+
+			# Whether we're connecting to a ZeroNet daemon that's not created using the
+			# ZeroNet addon (which must be placed at $root/addons/ZeroNet)
+			_external_daemon = config.get_value("zeroframe", "external_daemon", external_daemon)
 		else:
 			print("No address/port specified and config file not available at: ", config_file)
 			return
@@ -49,7 +56,7 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 		_daemon_port = daemon_port
 
 	# Create a WebSocket client
-	_ws_client = new_ws_client()
+	_ws_client = _new_ws_client()
 
 	# Regex for finding wrapper_key of ZeroNet site
 	_wrapper_key_regex = RegEx.new()
@@ -94,7 +101,7 @@ func _process(delta):
 					print("Unknown websocket data received:", response)
 
 # Creates a new WebSocket client
-func new_ws_client():
+func _new_ws_client():
 	_ws_client = WebSocketClient.new()
 
 	# Websocket client signals
@@ -489,7 +496,7 @@ func use_site(site_address):
 	if _ws_client != null:
 		_ws_client.disconnect_from_host()
 
-	_ws_client = new_ws_client()
+	_ws_client = _new_ws_client()
 	_site_connected = false
 
 	# Set timeout timer
