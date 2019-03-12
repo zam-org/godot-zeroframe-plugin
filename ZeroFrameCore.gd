@@ -72,7 +72,7 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 
 func _log(args):
 	"""Log out an array of arguments in a consistent manner"""
-	print("[ZCore] ", *args)
+	print("[ZCore] ", args)
 
 func start_zeronet():
 	if not _ZeroNet_addon:
