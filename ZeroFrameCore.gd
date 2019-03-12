@@ -75,15 +75,21 @@ func _log(args):
 	print("[ZCore] ", args)
 
 func start_zeronet():
-	if not _ZeroNet_addon:
+	if _external_daemon:
 		return "Option external_daemon has been set to true. Refusing to start"
+
+	if _ZeroNet_addon == null:
+		return "Unable to load ZeroNet addon. Ensure it is stored at addons/ZeroNet"
 
 	# Start ZeroNet addon
 	_ZeroNet_addon.start(_daemon_port)
 
 func stop_zeronet():
-	if not _ZeroNet_addon:
+	if _external_daemon:
 		return "Option external_daemon has been set to true. Refusing to stop"
+
+	if _ZeroNet_addon == null:
+		return "Unable to load ZeroNet addon. Ensure it is stored at addons/ZeroNet"
 
 	# Stop ZeroNet addon
 	_ZeroNet_addon.stop()
