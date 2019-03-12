@@ -379,9 +379,9 @@ func login_zeroid(private_key):
 	return result[0] == "done"
 
 # Log the user out of all accounts
-# Achieves this goal in different ways depending on whether we're running in
+# It achieves this goal in different ways depending on whether we're running in
 # Multiuser mode or not.
-# If in Multiuser mode, we simply remove the master seed from subsequent request
+# If in Multiuser mode, we simply remove the master seed from subsequent requests
 # If not, we must remove the master seed from the users.json file
 func logout():
 	if _multiuser_mode:
