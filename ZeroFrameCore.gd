@@ -238,8 +238,12 @@ func _solve_zeroid_challenge(challenge):
 # Be aware that this will disrupt any existing site websocket
 # connection, which will need to be re-established if necessary
 # TODO: Ability to connect to multiple zites at once?
-func register_zeroid(username):
-	_log(["Registering user with ZeroID: ", username])
+func register_zeroid(username=""):
+	# We call this function during login_zeroid() as well just to get the
+	# certificates from ZeroID. No need to print errors in this case.
+	var registering_existing = username == ""
+	if not registering_existing:
+		_log(["Registering user with ZeroID: ", username])
 
 	var clearnet_reg_site = "zeroid.qc.to"
 
@@ -271,10 +275,11 @@ func register_zeroid(username):
 			"cert": cert_sign,
 		}), "command_completed")
 
-		_log(["This user already exists:", response])
+		if not registering_existing:
+			_log(["This user already exists:", response])
 
 		if response.type == "confirm":
-			# We already have a cert for this registrar
+			# We already have a cert for this provider
 			# TODO: Replace existing cert
 			return null
 		else:
@@ -367,20 +372,19 @@ func register_zeroid(username):
 # Achieves this goal in different ways depending on whether we're running in
 # Multiuser mode or not.
 # If in Multiuser mode, go through the usual Multiuser steps to logout and
-# login with a private key
-# If not, convert the private key to a master seed ourselves then replace the
-# master seed in the embedded ZeroNet's users.json file and then trigger ZeroID
-# to add a cert
+# login with a master seed
+# If not, Replace the master seed in the embedded ZeroNet's users.json file and
+# then trigger ZeroID to add a cert
 # Returns true if successful, false otherwise
-func login_zeroid(private_key):
+func login_zeroid(master_seed):
 	if _multiuser_mode:
 		# Request for the login form (We don't actually need to read the form HTML).
 		var id = yield(cmd("userLoginForm", {}), "prompt_received").id
 		
-		# Respond to the form with our private key.
-		var result = yield(cmd("response", private_key, id), "notification_received")
+		# Respond to the form with our master seed.
+		var result = yield(cmd("response", master_seed, id), "notification_received")
 		
-		# If "done", successful login. If "error", incorrect private key.
+		# If "done", successful login. If "error", invalid master seed.
 		return result[0] == "done"
 	else:
 		if _external_daemon:
@@ -388,17 +392,39 @@ func login_zeroid(private_key):
 			return false
 		
 		# Read the users.json
+		# Check the file exists
+		var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
+		var users_file = File.new()
+		if not users_file.file_exists(users_file_path):
+			_log("Path to ZeroNet users file does not exist:", users_file_path)
+			return false
 
-		# Check if users.json is an empty '{}', if not then bail with:
-		# "Please log out before attempting to log in to a ZeroNet provider."
+		# Remove all content in the file
+		users_file.open(users_file_path, File.READ_WRITE)
+		var content = users_file.get_as_text()
 
-		# Convert the private key to a master seed
+		# Check if users.json is an empty '{}'
+		if content != "{}":
+			_log("Please log out before attempting to log in to a ZeroNet provider.")
+			return false
 
 		# Place some key "ZeroFrameGodot" with key "master_seed" in the file
+		var new_content = {
+			"ZeroFrameGodotPlugin": {
+				"master_seed": master_seed
+			}
+		}
+		var new_content = JSON.print(new_content)
 
 		# Save it back to users.json
+		users_file.store_string(new_content)
+		users_file.close()
 
 		# Call register_zeroid function to go through the certificate adding dance
+		var error = yield(register_zeroid(), "completed")
+		if error != null:
+			_log("Error during login:", error)
+			return false
 
 		return true
 

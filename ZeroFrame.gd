@@ -33,11 +33,11 @@ class Result:
 
 # ------- Login and Registration ------- #
 
-func login(username: String, private_key: String = "", provider: int = PROVIDER_ZEROID) -> Result:
+func login(username: String, master_seed: String = "", provider: int = PROVIDER_ZEROID) -> Result:
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			var response = yield(ZeroFrameCore.login_zeroid(private_key), "completed").result
+			var response = yield(ZeroFrameCore.login_zeroid(master_seed), "completed").result
 			print(response)
 		_:
 			res.error = "Unknown provider"
@@ -54,7 +54,7 @@ func register(username: String, provider: int = PROVIDER_ZEROID) -> Result:
 
 	return res
 
-func get_private_key(username: String, provider: int = PROVIDER_ZEROID) -> Result:
+func get_master_seed(username: String) -> Result:
 	# TODO
 	var res = Result.new()
 	return res
