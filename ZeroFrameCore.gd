@@ -16,6 +16,9 @@ signal site_updated(message)
 
 var _daemon_address: String
 var _daemon_port: int
+var _multiuser_mode: bool
+var _external_daemon: bool
+var _ZeroNet_addon: Object
 
 var _wrapper_key: String
 var _site_connection_timeout = 1.0
@@ -30,6 +33,7 @@ var timeout_counter = 0
 var timeout_limit = 0
 var current_address = null
 
+var zeronet_addon_path = "res://addons/ZeroNet/"
 var config_file_path = "res://addons/ZeroFrame/config.cfg"
 var config = ConfigFile.new()
 
@@ -48,7 +52,7 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 			# ZeroNet addon (which must be placed at $root/addons/ZeroNet)
 			_external_daemon = config.get_value("zeroframe", "external_daemon", external_daemon)
 		else:
-			print("No address/port specified and config file not available at: ", config_file)
+			_log(["No address/port specified and config file not available at: ", config_file])
 			return
 	else:
 		# Retrieve daemon information from the constructor
@@ -62,6 +66,38 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 	_wrapper_key_regex = RegEx.new()
 	_wrapper_key_regex.compile('wrapper_key = "(.*?)"')
 
+	# Load ZeroNet addon if not using an external daemon
+	if not _external_daemon:
+		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd").new()
+
+func _log(args):
+	"""Log out an array of arguments in a consistent manner"""
+	printraw("[ZCore] ")
+	for arg in args:
+		printraw(arg + " ")
+		
+	printraw("\n")
+
+func start_zeronet():
+	if _external_daemon:
+		return "Option external_daemon has been set to true. Refusing to start"
+
+	if _ZeroNet_addon == null:
+		return "Unable to load ZeroNet addon. Ensure it is stored at addons/ZeroNet"
+
+	# Start ZeroNet addon
+	_ZeroNet_addon.start(_daemon_port)
+
+func stop_zeronet():
+	if _external_daemon:
+		return "Option external_daemon has been set to true. Refusing to stop"
+
+	if _ZeroNet_addon == null:
+		return "Unable to load ZeroNet addon. Ensure it is stored at addons/ZeroNet"
+
+	# Stop ZeroNet addon
+	_ZeroNet_addon.stop()
+
 # Called every frame
 func _process(delta):
 	# Serves as an implementation of timer
@@ -73,7 +109,7 @@ func _process(delta):
 			timeout_counter = 0
 			timeout_limit = 0
 
-	if _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
+	if _ws_client != null and _ws_client.get_connection_status() != NetworkedMultiplayerPeer.CONNECTION_DISCONNECTED:
 		_ws_client.poll()
 		if _ws_client.get_peer(1).get_available_packet_count() > 0:
 			var response = JSON.parse(_ws_client.get_peer(1).get_packet().get_string_from_utf8()).result
@@ -98,19 +134,19 @@ func _process(delta):
 				"setSiteInfo":
 					emit_signal("site_updated", response)
 				_:
-					print("Unknown websocket data received:", response)
+					_log(["Unknown websocket data received:", response])
 
 # Creates a new WebSocket client
 func _new_ws_client():
-	_ws_client = WebSocketClient.new()
+	var new_client = WebSocketClient.new()
 
 	# Websocket client signals
-	_ws_client.connect("connection_established", self, "_ws_connection_established")
-	_ws_client.connect("connection_succeeded", self, "_ws_connection_established")
-	_ws_client.connect("connection_error", self, "_ws_connection_error")
-	_ws_client.connect("server_close_request", self, "_ws_server_close_request")
+	new_client.connect("connection_established", self, "_ws_connection_established")
+	new_client.connect("connection_succeeded", self, "_ws_connection_established")
+	new_client.connect("connection_error", self, "_ws_connection_error")
+	new_client.connect("server_close_request", self, "_ws_server_close_request")
 
-	return _ws_client
+	return new_client
 
 # Searches through a dictionary of users for an auth address
 # Helper function for ZeroID registration
@@ -203,7 +239,7 @@ func _solve_zeroid_challenge(challenge):
 # connection, which will need to be re-established if necessary
 # TODO: Ability to connect to multiple zites at once?
 func register_zeroid(username):
-	print("Registering user with ZeroID: ", username)
+	_log(["Registering user with ZeroID: ", username])
 
 	var clearnet_reg_site = "zeroid.qc.to"
 
@@ -235,7 +271,7 @@ func register_zeroid(username):
 			"cert": cert_sign,
 		}), "command_completed")
 
-		print("This user already exists:", response)
+		_log(["This user already exists:", response])
 
 		if response.type == "confirm":
 			# We already have a cert for this registrar
@@ -252,7 +288,7 @@ func register_zeroid(username):
 		"auth_address": auth_address,
 		"user_name": username,
 	}
-	print("Registering (1/2) with: ", JSON.print(registration_data))
+	_log(["Registering (1/2) with: ", JSON.print(registration_data)])
 
 	# Get challenge
 	var request = _make_http_request(clearnet_reg_site,
@@ -262,7 +298,7 @@ func register_zeroid(username):
 										HTTPClient.METHOD_POST)
 
 	if request.error != null:
-		print("Unable to connect to", clearnet_reg_site)
+		_log(["Unable to connect to", clearnet_reg_site])
 
 	response = JSON.parse(request.data)
 	if response.error != OK:
@@ -277,7 +313,7 @@ func register_zeroid(username):
 	# back to host
 	registration_data["work_id"] = response["work_id"]
 	registration_data["work_solution"] = _solve_zeroid_challenge(response["work_task"])
-	print("Registering (2/2) with: ", JSON.print(registration_data))
+	_log(["Registering (2/2) with: ", JSON.print(registration_data)])
 
 	# Send challenge solution
 	request = _make_http_request("zeroid.qc.to",
@@ -287,7 +323,7 @@ func register_zeroid(username):
 								HTTPClient.METHOD_POST).data
 
 	if request.error != null:
-		print("Unable to connect to", clearnet_reg_site)
+		_log(["Unable to connect to", clearnet_reg_site])
 
 	# Ensure registration was successful
 	if request.data != "OK":
@@ -295,9 +331,9 @@ func register_zeroid(username):
 		return response
 
 	# Wait for notification of site update
-	print("Waiting for site updated")
-	print("Site updated: ", yield(self, "site_updated"))
-	print("Updated!")
+	_log(["Waiting for site updated"])
+	_log(["Site updated: ", yield(self, "site_updated")])
+	_log(["Updated!"])
 
 	# Retrieve cert information from ZeroID site files
 	cert = _get_zeroid_cert(auth_address)
@@ -341,6 +377,35 @@ func login_zeroid(private_key):
 	
 	# If "done", successful login. If "error", incorrect private key.
 	return result[0] == "done"
+
+# Log the user out of all accounts
+# It achieves this goal in different ways depending on whether we're running in
+# Multiuser mode or not.
+# If in Multiuser mode, we simply remove the master seed from subsequent requests
+# If not, we must remove the master seed from the users.json file
+func logout():
+	if _multiuser_mode:
+		# TODO: Remove master seed from requests
+		return
+
+	if _external_daemon:
+		return ("Cannot logout from an external ZeroNet instance without Multiuser" +
+		        "mode enabled (and the Multiuser plugin enabled on the daemon)")
+	
+	# Check the file exists
+	var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
+	var users_file = File.new()
+	if not users_file.file_exists(users_file_path):
+		return "Path to ZeroNet users file does not exist: " + users_file_path
+
+	# Remove all content in the file
+	users_file.open(users_file_path, File.WRITE)
+	users_file.store_string("{}")
+	users_file.close()
+
+	# Restart ZeroNet addon to clear user cache
+	_ZeroNet_addon.stop()
+	_ZeroNet_addon.start(_daemon_port)
 	
 # Checks if the currently connected site has a given permission
 func site_has_permission(permission: String):
@@ -356,10 +421,10 @@ func site_has_permission(permission: String):
 # Essentially this uses an undocumented MultiUser API and parses the HTML response
 func retrieve_master_seed():
 	if not site_has_permission("ADMIN"):
-		print("Retrieving the master seed is not allowed on site's without ADMIN permission")
+		_log(["Retrieving the master seed is not allowed on site's without ADMIN permission"])
 
 	var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
-	print(html)
+	_log([html])
 	return html
 
 # Make a http/s request to a host.
@@ -442,7 +507,7 @@ func get_wrapper_key(site_address):
 	# Get webpage text containing wrapper key
 	var request = _make_http_request(_daemon_address, _daemon_port, "/" + site_address, "")
 	if request.error != null:
-		print("Got error with retrieving wrapper_key: ", request.error)
+		_log(["Got error with retrieving wrapper_key: ", request.error])
 		return ""
 
 	var text = request.data
@@ -471,7 +536,7 @@ func cmd(command: String, parameters = {}, to: int = 0):
 	else:
 		contents = JSON.print({"cmd": command, "params": parameters, "id": 1000001})
 		
-	print("Sending command:", contents)
+	_log(["Sending command:", contents])
 	_ws_client.get_peer(1).put_packet(contents.to_utf8())
 
 	return self
@@ -490,7 +555,7 @@ func _site_connect_timeout():
 
 # Use this site for future commands
 func use_site(site_address):
-	print("Connecting to: ", _daemon_address, ":", _daemon_port)
+	_log(["Connecting to: ", _daemon_address, ":", _daemon_port])
 
 	# Remove any previous websocket connection
 	if _ws_client != null:
@@ -506,7 +571,7 @@ func use_site(site_address):
 	_wrapper_key = get_wrapper_key(site_address)
 
 	if _wrapper_key == "":
-		print("Unable to connect to ZeroNet")
+		_log(["Unable to connect to ZeroNet"])
 		return self
 
 	# Open up WebSocket connection to the daemon
@@ -521,20 +586,20 @@ func use_site(site_address):
 	return self
 
 func _connection_established(established):
-	print("Established")
+	_log(["Established"])
 	if not _site_connected:
 		_site_connected = true
 		emit_signal("site_connected", established)
 
 func _ws_connection_established(protocol):
-	print("Connection established with protocol %s!" % protocol)
+	_log(["Connection established with protocol %s!" % protocol])
 	# Set sending websocket data as text, which ZeroNet prefers, rather than binary
 	_ws_client.get_peer(1).set_write_mode(WebSocketPeer.WRITE_MODE_TEXT)
 
 	_connection_established(true)
 
 func _ws_connection_error():
-	print("Websocket connection failed!")
+	_log(["Websocket connection failed!"])
 
 func _ws_server_close_request(error, reason):
-	print("Server issued close request!", error, reason)
+	_log(["Server issued close request!", error, reason])
