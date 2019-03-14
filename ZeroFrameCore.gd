@@ -396,7 +396,7 @@ func login_zeroid(master_seed):
 		var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
 		var users_file = File.new()
 		if not users_file.file_exists(users_file_path):
-			_log("Path to ZeroNet users file does not exist:", users_file_path)
+			_log(["Path to ZeroNet users file does not exist:", users_file_path])
 			return false
 
 		# Remove all content in the file
@@ -405,7 +405,7 @@ func login_zeroid(master_seed):
 
 		# Check if users.json is an empty '{}'
 		if content != "{}":
-			_log("Please log out before attempting to log in to a ZeroNet provider.")
+			_log(["Please log out before attempting to log in to a ZeroNet provider."])
 			return false
 
 		# Place some key "ZeroFrameGodot" with key "master_seed" in the file
@@ -414,7 +414,7 @@ func login_zeroid(master_seed):
 				"master_seed": master_seed
 			}
 		}
-		var new_content = JSON.print(new_content)
+		new_content = JSON.print(new_content)
 
 		# Save it back to users.json
 		users_file.store_string(new_content)
@@ -423,7 +423,7 @@ func login_zeroid(master_seed):
 		# Call register_zeroid function to go through the certificate adding dance
 		var error = yield(register_zeroid(), "completed")
 		if error != null:
-			_log("Error during login:", error)
+			_log(["Error during login:", error])
 			return false
 
 		return true
