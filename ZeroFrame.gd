@@ -19,7 +19,7 @@ var provider_domains = {
 	PROVIDER_ZEROID: "zeroid.bit"
 }
 
-var ZeroFrameCore = load('res://addons/ZeroFrame/ZeroFrameCore.gd')
+var ZeroFrameCore = load('res://addons/ZeroFrame/ZeroFrameCore.gd').new()
 
 # Result is an object that contains a result and an error as either something
 # or nothing (null). This type is object returned by functions. Callers should
@@ -33,11 +33,11 @@ class Result:
 
 # ------- Login and Registration ------- #
 
-func login(username: String, private_key: String = "", provider: int = PROVIDER_ZEROID) -> Result:
+func login(username: String, master_seed: String = "", provider: int = PROVIDER_ZEROID) -> Result:
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			var response = yield(ZeroFrameCore.retrieve_master_seed(), "completed").result
+			var response = yield(ZeroFrameCore.login_zeroid(master_seed), "completed").result
 			print(response)
 		_:
 			res.error = "Unknown provider"
@@ -54,7 +54,7 @@ func register(username: String, provider: int = PROVIDER_ZEROID) -> Result:
 
 	return res
 
-func get_private_key(username: String, provider: int = PROVIDER_ZEROID) -> Result:
+func get_master_seed(username: String) -> Result:
 	# TODO
 	var res = Result.new()
 	return res
