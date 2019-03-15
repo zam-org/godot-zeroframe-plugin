@@ -54,9 +54,11 @@ func register(username: String, provider: int = PROVIDER_ZEROID) -> Result:
 
 	return res
 
-func get_master_seed(username: String) -> Result:
-	# TODO
+func retrieve_master_seed(username: String) -> Result:
 	var res = Result.new()
+	res.result = yield(ZeroFrameCore.retrieve_master_seed(), "completed")
+	if typeof(res.result) == TYPE_DICTIONARY:
+		res.error = result["error"]
 	return res
 
 func logout(provider: int = PROVIDER_ZEROID) -> Result:

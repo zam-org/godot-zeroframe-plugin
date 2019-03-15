@@ -70,13 +70,20 @@ func _init(config_file=config_file_path, use_config_file=true, daemon_address="1
 	if not _external_daemon:
 		_ZeroNet_addon = load(zeronet_addon_path + "ZeroNet.gd").new()
 
+func _printss(args):
+	"""Like prints() but to a string variant"""
+	var s = ""
+	for i in range(len(args)):
+		s += arg as String
+
+		# Put a space after each argument except last
+		if i == len(args) - 1:
+			s += " "
+	return s
+
 func _log(args):
 	"""Log out an array of arguments in a consistent manner"""
-	printraw("[ZCore] ")
-	for arg in args:
-		printraw(arg + " ")
-		
-	printraw("\n")
+	print("[ZCore] ", _printss(args))
 
 func start_zeronet():
 	if _external_daemon:
@@ -475,8 +482,9 @@ func site_has_permission(permission: String):
 func retrieve_master_seed():
 	if _multiuser_mode:
 		if not site_has_permission("ADMIN"):
-			_log(["Retrieving the master seed is not allowed on sites without ADMIN permission"])
-			return
+			return {
+				"error": _printss(["Retrieving the master seed is not allowed on sites without ADMIN permission"]),
+			}
 
 		# TODO: Parse HTML
 		var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
@@ -484,16 +492,18 @@ func retrieve_master_seed():
 		return html
 
 	if not _external_daemon:
-		_log(["Account functions on an external daemon require Multiuser mode to be enabled"])
-		return ""
+		return {
+			"error": _printss(["Account functions on an external daemon require Multiuser mode to be enabled"]),
+		}
 
 	# Read the users.json
 	# Check the file exists
 	var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
 	var users_file = File.new()
 	if not users_file.file_exists(users_file_path):
-		_log(["Path to ZeroNet users file does not exist:", users_file_path])
-		return false
+		return {
+			"error": _printss(["Path to ZeroNet users file does not exist:", users_file_path]),
+		}
 
 	# Remove all content in the file
 	users_file.open(users_file_path, File.READ_WRITE)
@@ -501,8 +511,11 @@ func retrieve_master_seed():
 
 	# Check if users.json is an empty '{}'
 	if not "master_seed" in content:
-		_log(["Key 'master_key' not present in", users_file_path])
+		return ({
+			"error": _printss(["Key 'master_key' not present in ", users_file_path]),
+		})
 
+	# TODO: A better way of determining whether an error occurred (dict vs str)
 	return content["master_seed"]
 
 # Make a http/s request to a host.
