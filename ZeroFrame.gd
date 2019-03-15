@@ -37,8 +37,8 @@ func login(username: String, master_seed: String = "", provider: int = PROVIDER_
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			var response = yield(ZeroFrameCore.login_zeroid(master_seed), "completed").result
-			print(response)
+			if not yield(ZeroFrameCore.login_zeroid(master_seed), "completed"):
+				res.error = "Login failed"
 		_:
 			res.error = "Unknown provider"
 
@@ -54,11 +54,11 @@ func register(username: String, provider: int = PROVIDER_ZEROID) -> Result:
 
 	return res
 
-func retrieve_master_seed(username: String) -> Result:
+func retrieve_master_seed() -> Result:
 	var res = Result.new()
 	res.result = yield(ZeroFrameCore.retrieve_master_seed(), "completed")
 	if typeof(res.result) == TYPE_DICTIONARY:
-		res.error = result["error"]
+		res.error = res.result["error"]
 	return res
 
 func logout(provider: int = PROVIDER_ZEROID) -> Result:

@@ -74,7 +74,7 @@ func _printss(args):
 	"""Like prints() but to a string variant"""
 	var s = ""
 	for i in range(len(args)):
-		s += arg as String
+		s += args[i] as String
 
 		# Put a space after each argument except last
 		if i == len(args) - 1:
@@ -491,7 +491,7 @@ func retrieve_master_seed():
 		_log([html])
 		return html
 
-	if not _external_daemon:
+	if _external_daemon:
 		return {
 			"error": _printss(["Account functions on an external daemon require Multiuser mode to be enabled"]),
 		}
@@ -505,18 +505,25 @@ func retrieve_master_seed():
 			"error": _printss(["Path to ZeroNet users file does not exist:", users_file_path]),
 		}
 
-	# Remove all content in the file
+	# Get contents
 	users_file.open(users_file_path, File.READ_WRITE)
 	var content = users_file.get_as_text()
 
 	# Check if users.json is an empty '{}'
-	if not "master_seed" in content:
-		return ({
-			"error": _printss(["Key 'master_key' not present in ", users_file_path]),
-		})
+	if content.size() == 0:
+		return {
+			"error": _printss(["Key 'master_seed' not present in", users_file_path]),
+		}
+
+	var first_block = content[content.keys()[0]]
+
+	if not "master_seed" in first_block:
+		return {
+			"error": _printss(["Key 'master_seed' not present in", users_file_path]),
+		}
 
 	# TODO: A better way of determining whether an error occurred (dict vs str)
-	return content["master_seed"]
+	return first_block["master_seed"]
 
 # Make a http/s request to a host.
 # payload is a string that will be sent in the request
