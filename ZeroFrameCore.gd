@@ -428,10 +428,11 @@ func login_zeroid(master_seed):
 
 		return true
 
-
 # Log the user out of all accounts
-# It achieves this goal in different ways depending on whether we're running in
+#
+# Achieves this goal in different ways depending on whether we're running in
 # Multiuser mode or not.
+#
 # If in Multiuser mode, we simply remove the master seed from subsequent requests
 # If not, we must remove the master seed from the users.json file
 func logout():
@@ -464,19 +465,45 @@ func site_has_permission(permission: String):
 	return permission in site_info["settings"]["permissions"]
 	
 # Retrieve the master seed from the client
-# Requires the MultiUser plugin to be enabled
 #
-# So currently there isn't any easy way to do this over the WebSocket API, and as such
-# requires manual parsing of HTML (also requiring the MultiUser plugin to be enabled kind
-# of sucks). TODO Issue Num #
-# Essentially this uses an undocumented MultiUser API and parses the HTML response
+# Achieves this goal in different ways depending on whether we're running in
+# Multiuser mode or not.
+#
+# If in Multiuser mode, this uses an undocumented MultiUser API and parses the
+# HTML response.
+# If not, we grab it straight from users.json
 func retrieve_master_seed():
-	if not site_has_permission("ADMIN"):
-		_log(["Retrieving the master seed is not allowed on site's without ADMIN permission"])
+	if _multiuser_mode:
+		if not site_has_permission("ADMIN"):
+			_log(["Retrieving the master seed is not allowed on sites without ADMIN permission"])
+			return
 
-	var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
-	_log([html])
-	return html
+		# TODO: Parse HTML
+		var html = yield(cmd("userShowMasterSeed", {}), "notification_received")
+		_log([html])
+		return html
+
+	if not _external_daemon:
+		_log(["Account functions on an external daemon require Multiuser mode to be enabled"])
+		return ""
+
+	# Read the users.json
+	# Check the file exists
+	var users_file_path = zeronet_addon_path + "ZeroNet/data/users.json"
+	var users_file = File.new()
+	if not users_file.file_exists(users_file_path):
+		_log(["Path to ZeroNet users file does not exist:", users_file_path])
+		return false
+
+	# Remove all content in the file
+	users_file.open(users_file_path, File.READ_WRITE)
+	var content = users_file.get_as_text()
+
+	# Check if users.json is an empty '{}'
+	if not "master_seed" in content:
+		_log(["Key 'master_key' not present in", users_file_path])
+
+	return content["master_seed"]
 
 # Make a http/s request to a host.
 # payload is a string that will be sent in the request
