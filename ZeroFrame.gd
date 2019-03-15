@@ -37,7 +37,7 @@ func login(master_seed: String = "", provider: int = PROVIDER_ZEROID) -> Result:
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			if not yield(ZeroFrameCore.login_zeroid(master_seed), "completed"):
+			if not ZeroFrameCore.login_zeroid(master_seed):
 				res.error = "Login failed"
 		_:
 			res.error = "Unknown provider"
@@ -48,7 +48,7 @@ func register(username: String, provider: int = PROVIDER_ZEROID) -> Result:
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
-			res.error = yield(ZeroFrameCore.register_zeroid(username), "completed")
+			res.error = ZeroFrameCore.register_zeroid(username)
 		_:
 			res.error = "Unknown provider"
 
