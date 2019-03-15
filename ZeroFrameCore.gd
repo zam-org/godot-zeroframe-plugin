@@ -509,6 +509,14 @@ func retrieve_master_seed():
 	users_file.open(users_file_path, File.READ_WRITE)
 	var content = users_file.get_as_text()
 
+	var parse_result = JSON.parse(content)
+	if parse_result.error:
+		return {
+			"error": parse_result.error_string,
+		}
+
+	content = parse_result.result
+
 	# Check if users.json is an empty '{}'
 	if content.size() == 0:
 		return {

@@ -33,7 +33,7 @@ class Result:
 
 # ------- Login and Registration ------- #
 
-func login(username: String, master_seed: String = "", provider: int = PROVIDER_ZEROID) -> Result:
+func login(master_seed: String = "", provider: int = PROVIDER_ZEROID) -> Result:
 	var res = Result.new()
 	match provider:
 		PROVIDER_ZEROID:
