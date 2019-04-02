@@ -1,4 +1,4 @@
-# ZeroFrame Godot Plugin
+# ZeroFrame Godot Plugin  [![ZeroFrame Godot on Matrix](https://img.shields.io/matrix/zeroframe-godot:matrix.org.svg?label=%23zeroframe-godot&logo=matrix&server_fqdn=matrix.org)](https://matrix.to/#/#zeroframe-godot:matrix.org)
 
 This plugin seeks to be a 1:1 compatible client for the ZeroNet [ZeroFrame
 WebSocket
